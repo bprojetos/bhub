@@ -1361,8 +1361,27 @@ function openModalCampanha(campId){
 }
 
 async function editarCampanha(id){
-  try{const camps=await getAll('campanhas',`?id=eq.${id}`);if(!camps.length)return;const camp=camps[0];openModalCampanha(id);setTimeout(()=>{document.getElementById('camp-nome').value=camp.nome||'';document.getElementById('camp-plat').value=camp.plataforma||'Meta Ads';document.getElementById('camp-status').value=camp.status||'Ativa';document.getElementById('camp-verba').value=camp.verba||'';document.getElementById('camp-objetivo').value=camp.objetivo||'';},50);}
-  catch(e){showToast('Erro','error');}
+  try{
+    const camps=await getAll('campanhas',`?id=eq.${id}`);
+    if(!camps.length)return;
+    const camp=camps[0];
+    openModalCampanha(id);
+    // Wait for DOM to render then populate
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        const nome=document.getElementById('camp-nome');
+        const plat=document.getElementById('camp-plat');
+        const status=document.getElementById('camp-status');
+        const verba=document.getElementById('camp-verba');
+        const obj=document.getElementById('camp-objetivo');
+        if(nome)nome.value=camp.nome||'';
+        if(plat)plat.value=camp.plataforma||'Meta Ads';
+        if(status)status.value=camp.status||'Ativa';
+        if(verba)verba.value=camp.verba||'';
+        if(obj)obj.value=camp.objetivo||'';
+      });
+    });
+  }catch(e){showToast('Erro','error');}
 }
 
 async function salvarCampanha(){
