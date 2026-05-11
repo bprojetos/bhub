@@ -1192,10 +1192,35 @@ async function renderCalCliente(cid){
       getTemaMensal(cid,mesAtivo)
     ]);
     conteudos=data;
-    const temaHTML=`<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Temas do mês</div>
-      <input class="form-input" id="tema-input" value="${tema||''}" placeholder="ex: Setembro Amarelo, Lançamento X..." style="flex:1;font-size:13px;padding:6px 10px"/>
-      <button class="btn btn-ghost" style="white-space:nowrap;padding:6px 12px;font-size:12px" onclick="salvarTemaMensal('${cid}','${mesAtivo}',document.getElementById('tema-input').value).then(()=>showToast('Temas salvos!'))">Salvar</button>
+    const docs=await getAll('docs_mensais',`?cliente_id=eq.${cid}&mes=eq.${mesAtivo}&order=criado_em.asc`);
+    const temaHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px">Planejamento do mês</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Temas</div>
+        <input class="form-input" id="tema-input" value="${tema||''}" placeholder="ex: Setembro Amarelo, Lançamento X..." style="flex:1;font-size:13px;padding:6px 10px"/>
+        <button class="btn btn-ghost" style="white-space:nowrap;padding:6px 12px;font-size:12px" onclick="salvarTemaMensal('${cid}','${mesAtivo}',document.getElementById('tema-input').value).then(()=>showToast('Temas salvos!'))">Salvar</button>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Documentos do mês</div>
+        <div id="docs-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+          ${docs.length?docs.map(d=>`<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px">
+            <span style="font-size:14px">${d.tipo==='roteiro'?'🎬':d.tipo==='stories'?'📱':'📄'}</span>
+            <a href="${d.url}" target="_blank" style="font-size:12px;color:var(--text);text-decoration:none;font-weight:500">${d.nome}</a>
+            <button onclick="deletarDocMensal('${d.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:0 2px;line-height:1">×</button>
+          </div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic">Nenhum documento</div>'}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:7px;cursor:pointer;font-size:12px;color:var(--text2)">
+            🎬 Upload roteiro <input type="file" accept=".pdf,.doc,.docx,.txt,image/*" style="display:none" onchange="uploadDocMensal(this,'${cid}','${mesAtivo}','roteiro')"/>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:7px;cursor:pointer;font-size:12px;color:var(--text2)">
+            📱 Upload stories <input type="file" accept=".pdf,.doc,.docx,.txt,image/*" style="display:none" onchange="uploadDocMensal(this,'${cid}','${mesAtivo}','stories')"/>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:7px;cursor:pointer;font-size:12px;color:var(--text2)">
+            📄 Outro documento <input type="file" accept=".pdf,.doc,.docx,.txt,image/*,video/*" style="display:none" onchange="uploadDocMensal(this,'${cid}','${mesAtivo}','outro')"/>
+          </label>
+        </div>
+      </div>
     </div>`;
     view.innerHTML=temaHTML+renderCalHTML(data,mesAtivo,null);
   }catch(e){view.innerHTML='<div class="empty-state"><div class="empty-title">Erro</div></div>';}
@@ -1266,6 +1291,16 @@ async function renderAprovacaoPage(token){
     const cd=await getAll('clientes',`?id=eq.${aprov.cliente_id}`);const c=cd[0];
     const items=await getAll('conteudos',`?cliente_id=eq.${aprov.cliente_id}&mes=eq.${aprov.mes}&order=data_publicacao.asc`);
     const pendentes=items.filter(x=>x.status!=='Aprovação de Planejamento'&&x.status!=='Correção Interna');
+    const docs=await getAll('docs_mensais',`?cliente_id=eq.${aprov.cliente_id}&mes=eq.${aprov.mes}&order=criado_em.asc`);
+    const docsHTML=docs.length?`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:24px">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Documentos do mês</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${docs.map(d=>`<a href="${d.url}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text)">
+          <span style="font-size:18px">${d.tipo==='roteiro'?'🎬':d.tipo==='stories'?'📱':'📄'}</span>
+          <div><div style="font-size:13px;font-weight:500">${d.nome}</div><div style="font-size:11px;color:var(--text3);margin-top:1px">Toque para abrir</div></div>
+        </a>`).join('')}
+      </div>
+    </div>`:'';
     page.innerHTML=`
       <div class="approval-header">
         ${c.logo_url?`<img src="${c.logo_url}" style="width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px">`:''}
@@ -1273,6 +1308,7 @@ async function renderAprovacaoPage(token){
         <div class="approval-title">${c.nome}</div>
         <div class="approval-subtitle">Planejamento de ${getMesLabelFull(aprov.mes)}</div>
       </div>
+      ${docsHTML}
       <div style="display:flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:20px;width:fit-content">
         <button class="month-tab active" id="ap-view-lista" onclick="setApView('lista')">Lista</button>
         <button class="month-tab" id="ap-view-cal" onclick="setApView('cal')">Calendário</button>
@@ -1552,6 +1588,25 @@ async function exportarRelatorio(cid){
     html+=`</body></html>`;
     const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`relatorio-${cliente.nome.toLowerCase().replace(/ /g,'-')}-${new Date().toISOString().slice(0,10)}.html`;a.click();URL.revokeObjectURL(url);showToast('Relatório gerado!');
   }catch(e){showToast('Erro','error');console.error(e);}
+}
+
+
+async function uploadDocMensal(input, cid, mes, tipo){
+  const file=input.files[0];if(!file)return;
+  showToast('Enviando documento...');
+  try{
+    const url=await uploadFile(file);
+    const nomeMap={'roteiro':'Roteiro Reels','stories':'Sugestão Stories','outro':file.name};
+    await ins('docs_mensais',{cliente_id:cid,mes,nome:nomeMap[tipo]||file.name,tipo,url});
+    showToast('Documento enviado!');
+    renderCalCliente(cid);
+  }catch(e){showToast('Erro no upload','error');console.error(e);}
+}
+
+async function deletarDocMensal(id){
+  if(!confirm('Remover este documento?'))return;
+  try{await del('docs_mensais',`?id=eq.${id}`);renderCalCliente(clienteAtivo.id);}
+  catch(e){showToast('Erro','error');}
 }
 
 async function salvarTemaMensal(cid,mes,temas){try{const ex=await getAll('temas_mensais',`?cliente_id=eq.${cid}&mes=eq.${mes}`);if(ex.length){await upd('temas_mensais',{temas},`?cliente_id=eq.${cid}&mes=eq.${mes}`);}else{await ins('temas_mensais',{cliente_id:cid,mes,temas});}}catch(e){console.error(e);}}
