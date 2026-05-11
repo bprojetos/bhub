@@ -209,6 +209,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .cal-event{border-radius:4px;padding:3px 6px;font-size:10px;font-weight:500;margin-bottom:3px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.15s;}
 .cal-event:hover{opacity:0.8;}
 
+/* PERFORMANCE */
+.perf-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden;}
+.perf-card-header{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:12px;}
+.perf-card-header:hover{background:var(--bg3);}
+.perf-card-body{padding:0 18px 16px;display:none;}
+.perf-card-body.open{display:block;}
+.plataforma-badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:4px;}
+.status-ativa{background:var(--teal-dim);color:var(--teal);}
+.status-pausada{background:var(--amber-dim);color:var(--amber);}
+.status-encerrada{background:var(--bg4);color:var(--text3);}
+.criativo-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;}
+.resumo-semana{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;}
+.resumo-semana-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.metric-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px;}
+.metric-box{background:var(--bg4);border-radius:6px;padding:8px 10px;text-align:center;}
+.metric-label{font-size:10px;color:var(--text3);margin-bottom:2px;}
+.metric-value{font-size:14px;font-weight:600;font-family:'DM Mono',monospace;}
+
 /* MATERIAIS */
 .material-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;}
 .material-icon{font-size:16px;flex-shrink:0;}
@@ -326,6 +344,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             <button class="month-tab" id="view-materiais" onclick="setView('materiais')">Infos Cliente</button>
             <button class="month-tab active" id="view-kanban" onclick="setView('kanban')">Kanban</button>
             <button class="month-tab" id="view-cal" onclick="setView('cal')">Calendário</button>
+            <button class="month-tab" id="view-performance" onclick="setView('performance')">Performance</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 8px">
             <button onclick="navegarMes(-1)" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1">‹</button>
@@ -487,7 +506,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="modal" style="max-width:480px">
     <div class="modal-header"><div class="modal-title">Adicionar material</div><button class="modal-close" onclick="closeModal('modal-material')">×</button></div>
     <div class="modal-body">
-      <div class="form-group"><label class="form-label">Nome do material</label><input class="form-input" id="mat-nome" placeholder="ex: Vídeos do João - Maio"/></div>
+      <div class="form-group"><label class="form-label">Nome do material</label><input class="form-input" id="mat-nome" placeholder="ex: Vídeos do cliente - Maio"/></div>
       <div class="form-group">
         <label class="form-label">Tipo</label>
         <select class="form-select" id="mat-tipo" onchange="toggleMatTipo()">
@@ -641,10 +660,14 @@ async function showScreen(id,cid){
 
 function setView(v){
   clienteView=v;
-  ['kanban','cal','materiais'].forEach(x=>{document.getElementById('view-'+x).classList.toggle('active',x===v);});
+  ['kanban','cal','materiais','performance'].forEach(x=>{
+    const el=document.getElementById('view-'+x);
+    if(el)el.classList.toggle('active',x===v);
+  });
   if(v==='kanban')renderKanban(clienteAtivo.id);
   else if(v==='cal')renderCalCliente(clienteAtivo.id);
-  else renderMateriais(clienteAtivo.id);
+  else if(v==='materiais')renderMateriais(clienteAtivo.id);
+  else if(v==='performance')renderPerformance(clienteAtivo.id);
 }
 
 function renderMesPicker(){
@@ -1019,22 +1042,53 @@ async function renderMateriais(cid){
   view.style.cssText='';
   const c=clienteAtivo;
   let html=`<div style="max-width:700px">`;
-  if(isAdmin){
-    html+=`<div class="config-section" style="margin-bottom:16px">
-      <div class="config-section-title">Perfil do cliente</div>
-      <div class="config-section-sub">Informações visíveis para a equipe</div>
-      ${c.logo_url?`<img src="${c.logo_url}" style="width:64px;height:64px;border-radius:10px;object-fit:cover;margin-bottom:12px">`:''}
-      ${c.resumo?`<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px">${c.resumo}</div>`:''}
-      ${c.link_drive?`<a href="${c.link_drive}" target="_blank" class="btn btn-ghost" style="display:inline-flex;text-decoration:none">📁 Abrir pasta no Drive</a>`:''}
-    </div>`;
-  } else if(c.resumo||c.link_drive||c.logo_url){
-    html+=`<div class="config-section" style="margin-bottom:16px">
-      ${c.logo_url?`<img src="${c.logo_url}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;margin-bottom:10px">`:''}
-      ${c.resumo?`<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px">${c.resumo}</div>`:''}
-      ${c.link_drive?`<a href="${c.link_drive}" target="_blank" class="btn btn-ghost" style="display:inline-flex;text-decoration:none">📁 Pasta no Drive</a>`:''}
-    </div>`;
-  }
-  html+=`<div class="section-header" style="margin-top:20px"><div class="section-title">Materiais de referência</div><button class="btn btn-primary" onclick="openModalMaterial()">+ Adicionar</button></div><div id="materiais-list"><div class="loading"><div class="spinner"></div> Carregando...</div></div></div>`;
+
+  // Perfil section — editable for admin, read-only for others
+  html+=`<div class="config-section" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="config-section-title" style="margin-bottom:0">Perfil do cliente</div>
+      ${isAdmin?`<button class="btn btn-ghost" onclick="editarPerfilCliente()" id="btn-editar-perfil">Editar</button>`:''}
+    </div>
+    <div id="perfil-view">
+      <div style="display:flex;align-items:flex-start;gap:16px">
+        ${c.logo_url
+          ?`<img src="${c.logo_url}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0">`
+          :`<div style="width:72px;height:72px;border-radius:10px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600;color:${c.cor};flex-shrink:0">${c.nome.charAt(0)}</div>`
+        }
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:600;margin-bottom:6px">${c.nome}</div>
+          ${c.resumo?`<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px">${c.resumo}</div>`:`<div style="font-size:13px;color:var(--text3);font-style:italic;margin-bottom:10px">Sem resumo cadastrado</div>`}
+          ${c.link_drive?`<a href="${c.link_drive}" target="_blank" class="btn btn-ghost" style="display:inline-flex;text-decoration:none;font-size:12px">📁 Abrir pasta no Drive</a>`:`<span style="font-size:12px;color:var(--text3)">Sem link do Drive</span>`}
+        </div>
+      </div>
+    </div>
+    <div id="perfil-edit" style="display:none">
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Logo do cliente</label>
+          <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:7px;cursor:pointer;font-size:12px;color:var(--text2)">
+            <span>📎</span><span id="edit-logo-label">${c.logo_url?'Trocar logo':'Fazer upload do logo'}</span>
+            <input type="file" id="edit-logo-input" accept="image/*" style="display:none" onchange="handleEditLogoUpload()"/>
+          </label>
+          <input type="hidden" id="edit-logo-url" value="${c.logo_url||''}" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Link da pasta no Drive</label>
+          <input class="form-input" id="edit-drive-url" value="${c.link_drive||''}" placeholder="https://drive.google.com/..."/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Resumo / Briefing</label>
+        <textarea class="form-textarea" id="edit-resumo" placeholder="Quem é esse cliente, o que faz...">${c.resumo||''}</textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="salvarPerfilCliente()">Salvar perfil</button>
+        <button class="btn btn-ghost" onclick="cancelarEditarPerfil()">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+
+  html+=`<div class="section-header"><div class="section-title">Materiais de referência</div><button class="btn btn-primary" onclick="openModalMaterial()">+ Adicionar</button></div><div id="materiais-list"><div class="loading"><div class="spinner"></div> Carregando...</div></div></div>`;
   view.innerHTML=html;
   try{
     const mats=await getAll('materiais',`?cliente_id=eq.${cid}&order=criado_em.desc`);
@@ -1048,6 +1102,49 @@ async function renderMateriais(cid){
         <button onclick="deletarMaterial('${m.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:4px;line-height:1">×</button>
       </div>`).join('');
   }catch(e){document.getElementById('materiais-list').innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';}
+}
+
+
+function editarPerfilCliente(){
+  document.getElementById('perfil-view').style.display='none';
+  document.getElementById('perfil-edit').style.display='block';
+  document.getElementById('btn-editar-perfil').style.display='none';
+}
+
+function cancelarEditarPerfil(){
+  document.getElementById('perfil-view').style.display='block';
+  document.getElementById('perfil-edit').style.display='none';
+  document.getElementById('btn-editar-perfil').style.display='inline-flex';
+}
+
+async function handleEditLogoUpload(){
+  const file=document.getElementById('edit-logo-input').files[0];
+  if(!file)return;
+  const label=document.getElementById('edit-logo-label');
+  label.textContent='Enviando...';
+  try{
+    const url=await uploadFile(file);
+    document.getElementById('edit-logo-url').value=url;
+    label.textContent='✓ '+file.name;
+  }catch(e){label.textContent='Erro no upload';showToast('Erro no upload','error');}
+}
+
+async function salvarPerfilCliente(){
+  try{
+    const dados={
+      resumo:document.getElementById('edit-resumo').value,
+      link_drive:document.getElementById('edit-drive-url').value,
+      logo_url:document.getElementById('edit-logo-url').value
+    };
+    await upd('clientes',dados,`?id=eq.${clienteAtivo.id}`);
+    // Update local cache
+    const idx=clientes.findIndex(x=>x.id===clienteAtivo.id);
+    if(idx>=0)clientes[idx]={...clientes[idx],...dados};
+    clienteAtivo={...clienteAtivo,...dados};
+    showToast('Perfil atualizado!');
+    renderSidebar();
+    renderMateriais(clienteAtivo.id);
+  }catch(e){showToast('Erro ao salvar','error');console.error(e);}
 }
 
 function openModalMaterial(){document.getElementById('mat-nome').value='';document.getElementById('mat-url').value='';document.getElementById('mat-tipo').value='link';toggleMatTipo();document.getElementById('modal-material').classList.add('open');}
@@ -1086,9 +1183,17 @@ async function renderCalCliente(cid){
   view.style.cssText='';
   view.innerHTML='<div class="loading"><div class="spinner"></div> Carregando...</div>';
   try{
-    const data=await getAll('conteudos',`?cliente_id=eq.${cid}&mes=eq.${mesAtivo}&order=data_publicacao.asc`);
+    const [data,tema]=await Promise.all([
+      getAll('conteudos',`?cliente_id=eq.${cid}&mes=eq.${mesAtivo}&order=data_publicacao.asc`),
+      getTemaMensal(cid,mesAtivo)
+    ]);
     conteudos=data;
-    view.innerHTML=renderCalHTML(data,mesAtivo,null);
+    const temaHTML=`<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Temas do mês</div>
+      <input class="form-input" id="tema-input" value="${tema||''}" placeholder="ex: Setembro Amarelo, Lançamento X..." style="flex:1;font-size:13px;padding:6px 10px"/>
+      <button class="btn btn-ghost" style="white-space:nowrap;padding:6px 12px;font-size:12px" onclick="salvarTemaMensal('${cid}','${mesAtivo}',document.getElementById('tema-input').value).then(()=>showToast('Temas salvos!'))">Salvar</button>
+    </div>`;
+    view.innerHTML=temaHTML+renderCalHTML(data,mesAtivo,null);
   }catch(e){view.innerHTML='<div class="empty-state"><div class="empty-title">Erro</div></div>';}
 }
 
@@ -1226,6 +1331,94 @@ async function enviarAprovacoes(cid,mes){
     btn.textContent='✓ Respostas enviadas';btn.disabled=true;
   }catch(e){showToast('Erro ao enviar','error');}
 }
+
+// PERFORMANCE
+const PLATAFORMAS=['Meta Ads','Google Ads','LinkedIn Ads','TikTok Ads'];
+const PLAT_COLORS={'Meta Ads':'#1877f2','Google Ads':'#ea4335','LinkedIn Ads':'#0a66c2','TikTok Ads':'#010101'};
+
+async function renderPerformance(cid){
+  const view=document.getElementById('cliente-view');
+  view.style.cssText='';
+  view.innerHTML='<div class="loading"><div class="spinner"></div> Carregando...</div>';
+  try{
+    const campanhas=await getAll('campanhas',`?cliente_id=eq.${cid}&order=criado_em.desc`);
+    let html=`<div style="max-width:900px"><div class="section-header"><div class="section-title">Campanhas</div><div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="exportarRelatorio('${cid}')">📄 Exportar relatório</button><button class="btn btn-primary" onclick="openModalCampanha()">+ Nova campanha</button></div></div>`;
+    if(!campanhas.length){html+='<div class="empty-state"><div class="empty-title">Nenhuma campanha</div><div class="empty-sub">Clique em Nova campanha para começar</div></div>';}
+    else{for(const camp of campanhas){const criativos=await getAll('criativos',`?campanha_id=eq.${camp.id}&order=criado_em.desc`);const resumos=await getAll('resumos_semanais',`?campanha_id=eq.${camp.id}&order=semana.desc`);const pc=PLAT_COLORS[camp.plataforma]||'#888';const stCls={'Ativa':'status-ativa','Pausada':'status-pausada','Encerrada':'status-encerrada'}[camp.status]||'';html+=`<div class="perf-card"><div class="perf-card-header" onclick="togglePerfCard('pc-${camp.id}')"><div style="display:flex;align-items:center;gap:10px;flex:1"><div class="plataforma-badge" style="background:${pc}22;color:${pc}">${camp.plataforma}</div><div style="font-weight:500">${camp.nome}</div><span class="status-pill ${stCls}">${camp.status}</span></div><div style="display:flex;align-items:center;gap:10px">${camp.verba?`<span style="font-size:12px;color:var(--text2)">R$ ${Number(camp.verba).toLocaleString('pt-BR')}</span>`:''}${camp.objetivo?`<span style="font-size:11px;color:var(--text3)">${camp.objetivo}</span>`:''}<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();editarCampanha('${camp.id}')">Editar</button><button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();deletarCampanha('${camp.id}','${camp.nome}')">×</button></div></div><div class="perf-card-body" id="pc-${camp.id}"><div style="margin-bottom:16px"><div class="section-header" style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px">Criativos e Copys</div><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModalCriativo('${camp.id}')">+ Adicionar</button></div>${criativos.length?criativos.map(cr=>`<div class="criativo-item"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--bg4);color:var(--text2)">${cr.tipo}</span><span style="font-size:10px;color:${cr.status==='Ativo'?'var(--teal)':'var(--text3)'}">${cr.status}</span></div>${cr.descricao?`<div style="font-size:12px;font-weight:500;margin-bottom:4px">${cr.descricao}</div>`:''} ${cr.copy?`<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:6px">${cr.copy}</div>`:''} ${cr.midia_url?`<a href="${cr.midia_url}" target="_blank" style="font-size:11px;color:var(--blue)">Ver mídia →</a>`:''}</div><button onclick="deletarCriativo('${cr.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px">×</button></div></div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum criativo</div>'}</div><div><div class="section-header" style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px">Resumos Semanais</div><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModalResumo('${camp.id}')">+ Adicionar semana</button></div>${resumos.length?resumos.map(r=>`<div class="resumo-semana"><div class="resumo-semana-header"><div style="font-size:12px;font-weight:600">Semana de ${r.semana}</div><button onclick="deletarResumo('${r.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px">×</button></div><div class="metric-grid"><div class="metric-box"><div class="metric-label">Impressões</div><div class="metric-value">${r.impressoes?Number(r.impressoes).toLocaleString('pt-BR'):'—'}</div></div><div class="metric-box"><div class="metric-label">Cliques</div><div class="metric-value">${r.cliques?Number(r.cliques).toLocaleString('pt-BR'):'—'}</div></div><div class="metric-box"><div class="metric-label">Conversões</div><div class="metric-value">${r.conversoes||'—'}</div></div><div class="metric-box"><div class="metric-label">ROAS</div><div class="metric-value">${r.roas?Number(r.roas).toFixed(2)+'x':'—'}</div></div><div class="metric-box"><div class="metric-label">Verba gasta</div><div class="metric-value">${r.verba_gasta?'R$'+Number(r.verba_gasta).toLocaleString('pt-BR'):'—'}</div></div></div>${r.resumo?`<div style="font-size:12px;color:var(--text2);line-height:1.6;padding:8px;background:var(--bg4);border-radius:6px">${r.resumo}</div>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum resumo</div>'}</div></div></div>`;}}
+    html+='</div>';view.innerHTML=html;
+  }catch(e){view.innerHTML='<div class="empty-state"><div class="empty-title">Erro</div></div>';console.error(e);}
+}
+
+function togglePerfCard(id){const b=document.getElementById(id);if(b)b.classList.toggle('open');}
+
+let campanhaEditId=null;
+function openModalCampanha(campId){
+  campanhaEditId=campId||null;
+  const isEdit=!!campId;
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-campanha-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:560px"><div class="modal-header"><div class="modal-title">${isEdit?'Editar campanha':'Nova campanha'}</div><button class="modal-close" onclick="document.getElementById('modal-campanha-temp').remove()">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="camp-nome" placeholder="ex: Campanha Awareness Maio"/></div><div class="form-group"><label class="form-label">Plataforma</label><select class="form-select" id="camp-plat">${PLATAFORMAS.map(p=>`<option>${p}</option>`).join('')}</select></div></div><div class="form-row"><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="camp-status"><option>Ativa</option><option>Pausada</option><option>Encerrada</option></select></div><div class="form-group"><label class="form-label">Verba (R$)</label><input class="form-input" id="camp-verba" type="number" placeholder="0.00"/></div></div><div class="form-group"><label class="form-label">Objetivo</label><input class="form-input" id="camp-objetivo" placeholder="ex: Geração de leads, Awareness..."/></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-campanha-temp').remove()">Cancelar</button><button class="btn btn-primary" onclick="salvarCampanha()">Salvar</button></div></div>`;
+  document.body.appendChild(ov);
+}
+
+async function editarCampanha(id){
+  try{const camps=await getAll('campanhas',`?id=eq.${id}`);if(!camps.length)return;const camp=camps[0];openModalCampanha(id);setTimeout(()=>{document.getElementById('camp-nome').value=camp.nome||'';document.getElementById('camp-plat').value=camp.plataforma||'Meta Ads';document.getElementById('camp-status').value=camp.status||'Ativa';document.getElementById('camp-verba').value=camp.verba||'';document.getElementById('camp-objetivo').value=camp.objetivo||'';},50);}
+  catch(e){showToast('Erro','error');}
+}
+
+async function salvarCampanha(){
+  const nome=document.getElementById('camp-nome').value.trim();
+  if(!nome){showToast('Informe o nome','error');return;}
+  const dados={nome,plataforma:document.getElementById('camp-plat').value,status:document.getElementById('camp-status').value,verba:document.getElementById('camp-verba').value||null,objetivo:document.getElementById('camp-objetivo').value};
+  try{if(campanhaEditId){await upd('campanhas',dados,`?id=eq.${campanhaEditId}`);}else{await ins('campanhas',{...dados,cliente_id:clienteAtivo.id});}showToast(campanhaEditId?'Atualizada!':'Criada!');document.getElementById('modal-campanha-temp')?.remove();renderPerformance(clienteAtivo.id);}
+  catch(e){showToast('Erro','error');}
+}
+
+async function deletarCampanha(id,nome){if(!confirm(`Excluir "${nome}"?`))return;try{await del('campanhas',`?id=eq.${id}`);showToast('Excluída');renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+
+let criatCampId=null;
+function openModalCriativo(campId){
+  criatCampId=campId;
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-criativo-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:560px"><div class="modal-header"><div class="modal-title">Novo criativo / copy</div><button class="modal-close" onclick="document.getElementById('modal-criativo-temp').remove()">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="cri-tipo"><option>Criativo</option><option>Copy</option><option>Criativo + Copy</option><option>Vídeo</option><option>Carrossel</option></select></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="cri-status"><option>Ativo</option><option>Pausado</option><option>Encerrado</option></select></div></div><div class="form-group"><label class="form-label">Descrição</label><input class="form-input" id="cri-desc" placeholder="ex: Stories animado - oferta de maio"/></div><div class="form-group"><label class="form-label">Copy</label><textarea class="form-textarea" id="cri-copy" placeholder="Cole aqui a copy..."></textarea></div><div class="form-group"><label class="form-label">URL da mídia (opcional)</label><input class="form-input" id="cri-midia" placeholder="https://..."/></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-criativo-temp').remove()">Cancelar</button><button class="btn btn-primary" onclick="salvarCriativo()">Salvar</button></div></div>`;
+  document.body.appendChild(ov);
+}
+
+async function salvarCriativo(){try{await ins('criativos',{campanha_id:criatCampId,tipo:document.getElementById('cri-tipo').value,status:document.getElementById('cri-status').value,descricao:document.getElementById('cri-desc').value,copy:document.getElementById('cri-copy').value,midia_url:document.getElementById('cri-midia').value});showToast('Salvo!');document.getElementById('modal-criativo-temp')?.remove();renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+async function deletarCriativo(id){if(!confirm('Remover?'))return;try{await del('criativos',`?id=eq.${id}`);renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+
+let resumoCampId=null;
+function openModalResumo(campId){
+  resumoCampId=campId;
+  const hoje=new Date();const sem=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-resumo-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:560px"><div class="modal-header"><div class="modal-title">Resumo semanal</div><button class="modal-close" onclick="document.getElementById('modal-resumo-temp').remove()">×</button></div><div class="modal-body"><div class="form-group"><label class="form-label">Semana (data de início)</label><input class="form-input" id="res-semana" type="date" value="${sem}"/></div><div class="metric-grid" style="margin-bottom:16px"><div class="form-group" style="margin-bottom:0"><label class="form-label">Impressões</label><input class="form-input" id="res-imp" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Cliques</label><input class="form-input" id="res-cli" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Conversões</label><input class="form-input" id="res-conv" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">ROAS</label><input class="form-input" id="res-roas" type="number" step="0.01" placeholder="0.00"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Verba gasta</label><input class="form-input" id="res-verba" type="number" placeholder="0.00"/></div></div><div class="form-group"><label class="form-label">Resumo / Observações</label><textarea class="form-textarea" id="res-texto" placeholder="Desempenho da semana, insights, otimizações..." style="min-height:100px"></textarea></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-resumo-temp').remove()">Cancelar</button><button class="btn btn-primary" onclick="salvarResumo()">Salvar</button></div></div>`;
+  document.body.appendChild(ov);
+}
+
+async function salvarResumo(){const s=document.getElementById('res-semana').value;if(!s){showToast('Informe a semana','error');return;}try{await ins('resumos_semanais',{campanha_id:resumoCampId,semana:s,impressoes:document.getElementById('res-imp').value||null,cliques:document.getElementById('res-cli').value||null,conversoes:document.getElementById('res-conv').value||null,roas:document.getElementById('res-roas').value||null,verba_gasta:document.getElementById('res-verba').value||null,resumo:document.getElementById('res-texto').value});showToast('Resumo salvo!');document.getElementById('modal-resumo-temp')?.remove();renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+async function deletarResumo(id){if(!confirm('Remover?'))return;try{await del('resumos_semanais',`?id=eq.${id}`);renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+
+async function exportarRelatorio(cid){
+  showToast('Gerando relatório...');
+  try{
+    const cliente=clientes.find(x=>x.id===cid);
+    const campanhas=await getAll('campanhas',`?cliente_id=eq.${cid}&order=criado_em.desc`);
+    let html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório — ${cliente.nome}</title><style>body{font-family:Arial,sans-serif;max-width:900px;margin:0 auto;padding:40px 32px;color:#111;}h1{font-size:24px;}h2{font-size:16px;color:#444;margin:24px 0 8px;}h3{font-size:14px;margin:16px 0 6px;}.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;margin-right:6px;}.ativa{background:#d1fae5;color:#065f46;}.pausada{background:#fef3c7;color:#92400e;}.encerrada{background:#f3f4f6;color:#6b7280;}table{width:100%;border-collapse:collapse;margin:8px 0 16px;}th,td{padding:8px 10px;border:1px solid #e5e7eb;font-size:12px;text-align:left;}th{background:#f9fafb;font-weight:600;}.cbox{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:12px;line-height:1.6;margin-bottom:8px;}.rbox{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px;font-size:12px;line-height:1.6;margin-top:6px;}hr{border:none;border-top:1px solid #e5e7eb;margin:24px 0;}</style></head><body><h1>Relatório de Performance — ${cliente.nome}</h1><p style="font-size:12px;color:#6b7280">Gerado em ${new Date().toLocaleDateString('pt-BR')} · b.content</p><hr>`;
+    for(const camp of campanhas){
+      const crs=await getAll('criativos',`?campanha_id=eq.${camp.id}&order=criado_em.asc`);
+      const res=await getAll('resumos_semanais',`?campanha_id=eq.${camp.id}&order=semana.asc`);
+      html+=`<h2>${camp.plataforma} — ${camp.nome}</h2><p><span class="badge ${camp.status.toLowerCase()}">${camp.status}</span>${camp.objetivo?` Objetivo: ${camp.objetivo}`:''}${camp.verba?` · Verba: R$ ${Number(camp.verba).toLocaleString('pt-BR')}`:''}</p>`;
+      if(crs.length){html+=`<h3>Criativos e Copys</h3>`;crs.forEach(cr=>{html+=`<div style="margin-bottom:10px"><strong>${cr.tipo}${cr.descricao?' — '+cr.descricao:''}</strong> (${cr.status})`;if(cr.copy)html+=`<div class="cbox">${cr.copy}</div>`;html+=`</div>`;});}
+      if(res.length){html+=`<h3>Resumos Semanais</h3><table><tr><th>Semana</th><th>Impressões</th><th>Cliques</th><th>Conversões</th><th>ROAS</th><th>Verba</th></tr>`;res.forEach(r=>{html+=`<tr><td>${r.semana}</td><td>${r.impressoes?Number(r.impressoes).toLocaleString('pt-BR'):'—'}</td><td>${r.cliques?Number(r.cliques).toLocaleString('pt-BR'):'—'}</td><td>${r.conversoes||'—'}</td><td>${r.roas?Number(r.roas).toFixed(2)+'x':'—'}</td><td>${r.verba_gasta?'R$ '+Number(r.verba_gasta).toLocaleString('pt-BR'):'—'}</td></tr>`;if(r.resumo)html+=`<tr><td colspan="6"><div class="rbox">${r.resumo}</div></td></tr>`;});html+=`</table>`;}
+      html+=`<hr>`;
+    }
+    html+=`</body></html>`;
+    const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`relatorio-${cliente.nome.toLowerCase().replace(/ /g,'-')}-${new Date().toISOString().slice(0,10)}.html`;a.click();URL.revokeObjectURL(url);showToast('Relatório gerado!');
+  }catch(e){showToast('Erro','error');console.error(e);}
+}
+
+async function salvarTemaMensal(cid,mes,temas){try{const ex=await getAll('temas_mensais',`?cliente_id=eq.${cid}&mes=eq.${mes}`);if(ex.length){await upd('temas_mensais',{temas},`?cliente_id=eq.${cid}&mes=eq.${mes}`);}else{await ins('temas_mensais',{cliente_id:cid,mes,temas});}}catch(e){console.error(e);}}
+async function getTemaMensal(cid,mes){try{const r=await getAll('temas_mensais',`?cliente_id=eq.${cid}&mes=eq.${mes}`);return r.length?r[0].temas:'';}catch(e){return '';}}
 
 // UPLOAD
 async function uploadFile(file){
