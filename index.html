@@ -467,6 +467,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div id="preview-novo" style="display:flex;flex-wrap:wrap;gap:6px"></div>
         <input type="hidden" id="input-midia" value=""/>
       </div>
+      <div class="form-group"><label class="form-label">Link de referência (visível para o cliente)</label><input class="form-input" id="input-ref" placeholder="https://..."/></div>
       <div class="form-group"><label class="form-label">Observação interna</label><input class="form-input" id="input-obs" placeholder="Referência, contexto, briefing..."/></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-novo-conteudo')">Cancelar</button><button class="btn btn-primary" onclick="salvarConteudo()">Salvar conteúdo</button></div>
@@ -841,6 +842,7 @@ function openDetail(id){
       <label class="form-label">Status</label>
       <div class="status-select-grid">${STATUS_LIST.map(s=>`<button class="status-btn" id="sb-${slugify(s)}" onclick="selStatus('${s}')" style="${s===card.status?getSS(s):''}">${s}</button>`).join('')}</div>
     </div>
+    <div class="form-group"><label class="form-label">Link de referência (visível para o cliente)</label><input class="form-input" id="e-ref" value="${card.link_referencia||''}" placeholder="https://..."/></div>
     <div class="form-group"><label class="form-label">Observação</label><input class="form-input" id="e-obs" value="${card.observacao||''}" placeholder="Referência, correção solicitada..."/></div>`;
   uploadedUrls.edit=card.midias_urls&&card.midias_urls.length?[...card.midias_urls]:(card.midia_url?[card.midia_url]:[]);
   setTimeout(()=>renderPreview('preview-edit',uploadedUrls.edit),50);
@@ -875,6 +877,7 @@ async function atualizarConteudo(){
       midia_url:medias[0]||'',
       midias_urls:medias,
       copy:document.getElementById('e-copy').value,
+      link_referencia:document.getElementById('e-ref')?.value||'',
       observacao:document.getElementById('e-obs').value,
       status:statusSel||cardEdit.status,
       tag_demanda:document.getElementById('e-tag').value
@@ -944,7 +947,7 @@ async function salvarCliente(){
 
 // CONTEUDO MODAL
 function openModalNovoConteudo(){
-  ['input-tipo','input-data','input-responsavel','input-copy','input-midia','input-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['input-tipo','input-data','input-responsavel','input-copy','input-midia','input-obs','input-ref'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('input-status').value='Planejamento';
   document.getElementById('input-tag').value='';
   selTagVal='';
@@ -976,6 +979,7 @@ async function salvarConteudo(){
       data_publicacao:document.getElementById('input-data').value||null,
       responsavel:document.getElementById('input-responsavel').value,
       status:document.getElementById('input-status').value,
+      link_referencia:document.getElementById('input-ref')?.value||'',
       observacao:document.getElementById('input-obs').value,
       tag_demanda:document.getElementById('input-tag').value
     });
@@ -1261,30 +1265,39 @@ async function renderAprovacaoPage(token){
     const aprov=aprovs[0];
     const cd=await getAll('clientes',`?id=eq.${aprov.cliente_id}`);const c=cd[0];
     const items=await getAll('conteudos',`?cliente_id=eq.${aprov.cliente_id}&mes=eq.${aprov.mes}&order=data_publicacao.asc`);
+    const pendentes=items.filter(x=>x.status!=='Aprovação de Planejamento'&&x.status!=='Correção Interna');
     page.innerHTML=`
       <div class="approval-header">
-        ${c.logo_url?`<img src="${c.logo_url}" style="width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px">`:''  }
+        ${c.logo_url?`<img src="${c.logo_url}" style="width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px">`:''}
         <div class="approval-logo">b<span style="color:var(--accent)">.</span>hub</div>
         <div class="approval-title">${c.nome}</div>
-        <div class="approval-subtitle">Planejamento de ${getMesLabelFull(aprov.mes)} · Aguardando sua aprovação</div>
+        <div class="approval-subtitle">Planejamento de ${getMesLabelFull(aprov.mes)}</div>
       </div>
-      <div id="approval-items">${items.map(renderApCard).join('')}</div>
-      <div style="margin-top:24px;text-align:center">
-        <button class="btn btn-primary" onclick="enviarAprovacoes('${aprov.cliente_id}','${aprov.mes}')" style="padding:12px 32px;font-size:14px">Enviar aprovações</button>
+      <div style="display:flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:20px;width:fit-content">
+        <button class="month-tab active" id="ap-view-lista" onclick="setApView('lista')">Lista</button>
+        <button class="month-tab" id="ap-view-cal" onclick="setApView('cal')">Calendário</button>
+      </div>
+      <div id="approval-items">${items.map(item=>renderApCard(item)).join('')}</div>
+      <div id="approval-cal" style="display:none">${renderApCal(items,aprov.mes)}</div>
+      <div style="margin-top:24px;text-align:center" id="approval-submit-area">
+        ${pendentes.length?`<button class="btn btn-primary" onclick="enviarAprovacoes('${aprov.cliente_id}','${aprov.mes}')" style="padding:12px 32px;font-size:14px">Enviar aprovações</button>`:'<div style="font-size:14px;color:var(--teal);font-weight:500">✓ Todos os conteúdos já foram respondidos</div>'}
       </div>`;
   }catch(e){page.innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';}
 }
 
-function renderApCard(item){
+function renderApCard(item, jaRespondido){
   const tc=TC[item.tipo]||'#888';
   const medias=item.midias_urls&&item.midias_urls.length?item.midias_urls:(item.midia_url?[item.midia_url]:[]);
   const tag=item.tag_demanda&&TAG_MAP[item.tag_demanda];
+  const jaAprovado=item.status==='Aprovação de Planejamento';
+  const jaCorrecao=item.status==='Correção Interna';
   const mediaHTML=medias.map(url=>{
     const isVid=url.match(/\.(mp4|mov|webm|avi)/i);
-    return isVid?`<video src="${url}" controls style="width:100%;max-height:420px;border-radius:10px;display:block;background:#000;margin-bottom:8px"></video>`
+    return isVid
+      ?`<video src="${url}" controls style="width:100%;max-height:420px;border-radius:10px;display:block;background:#000;margin-bottom:8px"></video>`
       :`<img src="${url}" style="width:100%;max-height:420px;object-fit:contain;border-radius:10px;display:block;background:var(--bg3);margin-bottom:8px" onerror="this.remove()"/>`;
   }).join('');
-  return `<div class="approval-card" id="apc-${item.id}">
+  return `<div class="approval-card ${jaAprovado?'approved':jaCorrecao?'rejected':''}" id="apc-${item.id}">
     <div class="approval-card-top">
       ${medias.length?`<div class="approval-media">${mediaHTML}</div>`:''}
       <div class="approval-info">
@@ -1292,18 +1305,67 @@ function renderApCard(item){
           <div class="approval-type-badge" style="background:${tc}22;color:${tc}">${item.tipo}</div>
           <div class="approval-date">${item.data_publicacao?formatDate(item.data_publicacao):'sem data'}</div>
           ${tag?`<div style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:4px;background:${tag.bg};color:${tag.color}">${tag.label}</div>`:''}
+          ${jaAprovado?`<div style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--teal-dim);color:var(--teal)">✓ Aprovado</div>`:''}
+          ${jaCorrecao?`<div style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--red-dim);color:var(--red)">Ajuste solicitado</div>`:''}
         </div>
         <div class="approval-copy">${item.copy||'<em style="color:var(--text3)">sem copy</em>'}</div>
+        ${item.link_referencia?`<a href="${item.link_referencia}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--blue);margin-top:8px;text-decoration:none">🔗 Ver referência</a>`:''}
       </div>
     </div>
-    <div class="approval-actions">
+    ${!jaAprovado&&!jaCorrecao?`
+    <div class="approval-actions" id="actions-${item.id}">
       <button class="approval-btn approve" onclick="toggleAp('${item.id}','approve')">✓ Aprovar</button>
       <button class="approval-btn reject" onclick="toggleAp('${item.id}','reject')">✗ Solicitar ajuste</button>
     </div>
     <div class="comment-area" id="cmt-${item.id}">
       <input class="form-input" style="margin-top:8px" placeholder="Descreva o ajuste necessário..." id="obs-${item.id}"/>
-    </div>
+    </div>`:`<div style="padding:10px 0;font-size:12px;color:var(--text3);text-align:center">${jaAprovado?'✓ Você já aprovou este conteúdo':'✗ Você já solicitou ajuste neste conteúdo'}</div>`}
   </div>`;
+}
+
+
+function setApView(v){
+  document.getElementById('ap-view-lista').classList.toggle('active',v==='lista');
+  document.getElementById('ap-view-cal').classList.toggle('active',v==='cal');
+  document.getElementById('approval-items').style.display=v==='lista'?'block':'none';
+  document.getElementById('approval-cal').style.display=v==='cal'?'block':'none';
+}
+
+function renderApCal(items, mes){
+  const [y,m]=mes.split('-').map(Number);
+  const firstDay=new Date(y,m-1,1).getDay();
+  const daysInMonth=new Date(y,m,0).getDate();
+  const today=new Date();
+  const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const DAYS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const byDay={};
+  items.forEach(item=>{
+    if(!item.data_publicacao)return;
+    const d=item.data_publicacao.slice(0,10);
+    if(!byDay[d])byDay[d]=[];
+    byDay[d].push(item);
+  });
+  let html=`<div class="cal-grid">`;
+  DAYS.forEach(d=>html+=`<div class="cal-header-day">${d}</div>`);
+  for(let i=0;i<firstDay;i++){const pd=new Date(y,m-1,-firstDay+i+1);html+=`<div class="cal-day other-month"><div class="cal-day-num">${pd.getDate()}</div></div>`;}
+  for(let day=1;day<=daysInMonth;day++){
+    const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isToday=dateStr===todayStr;
+    const dayItems=byDay[dateStr]||[];
+    html+=`<div class="cal-day ${isToday?'today':''}">
+      <div class="cal-day-num">${day}</div>
+      ${dayItems.map(item=>{
+        const tc=TC[item.tipo]||'#888';
+        const jaAprovado=item.status==='Aprovação de Planejamento';
+        const jaCorrecao=item.status==='Correção Interna';
+        const dot=jaAprovado?'var(--teal)':jaCorrecao?'var(--red)':tc;
+        return `<div class="cal-event" style="background:${dot}22;color:${dot};border:1px solid ${dot}44" title="${item.copy||''}">${item.tipo}${item.copy?' · '+item.copy.slice(0,15):''}${jaAprovado?' ✓':jaCorrecao?' ✗':''}</div>`;
+      }).join('')}
+    </div>`;
+  }
+  const total=firstDay+daysInMonth;const rem=total%7===0?0:7-(total%7);
+  for(let i=1;i<=rem;i++)html+=`<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+  return html+'</div>';
 }
 
 function toggleAp(id,tipo){
