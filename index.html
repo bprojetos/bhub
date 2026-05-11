@@ -389,8 +389,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <div class="config-section-title">Senha da equipe</div>
           <div class="config-section-sub">Usada por todos os membros para acessar a plataforma</div>
           <div class="form-row">
-            <div class="form-group" style="margin-bottom:0"><label class="form-label">Nova senha</label><input class="form-input" id="nova-senha-equipe" type="password" placeholder="Nova senha da equipe"/></div>
-            <div class="form-group" style="margin-bottom:0"><label class="form-label">Confirmar</label><input class="form-input" id="conf-senha-equipe" type="password" placeholder="Confirme a senha"/></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Nova senha</label><div style="position:relative"><input class="form-input" id="nova-senha-equipe" type="password" placeholder="Nova senha da equipe" style="padding-right:40px"/><button onclick="toggleFieldSenha('nova-senha-equipe')" type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px">👁</button></div></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Confirmar</label><div style="position:relative"><input class="form-input" id="conf-senha-equipe" type="password" placeholder="Confirme a senha" style="padding-right:40px"/><button onclick="toggleFieldSenha('conf-senha-equipe')" type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px">👁</button></div></div>
           </div>
           <div style="margin-top:12px"><button class="btn btn-primary" onclick="salvarSenha('equipe')">Salvar senha da equipe</button></div>
         </div>
@@ -398,8 +398,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <div class="config-section-title">Senha admin</div>
           <div class="config-section-sub">Acesso às configurações, criação e exclusão de clientes</div>
           <div class="form-row">
-            <div class="form-group" style="margin-bottom:0"><label class="form-label">Nova senha</label><input class="form-input" id="nova-senha-admin" type="password" placeholder="Nova senha admin"/></div>
-            <div class="form-group" style="margin-bottom:0"><label class="form-label">Confirmar</label><input class="form-input" id="conf-senha-admin" type="password" placeholder="Confirme a senha"/></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Nova senha</label><div style="position:relative"><input class="form-input" id="nova-senha-admin" type="password" placeholder="Nova senha admin" style="padding-right:40px"/><button onclick="toggleFieldSenha('nova-senha-admin')" type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px">👁</button></div></div>
+            <div class="form-group" style="margin-bottom:0"><label class="form-label">Confirmar</label><div style="position:relative"><input class="form-input" id="conf-senha-admin" type="password" placeholder="Confirme a senha" style="padding-right:40px"/><button onclick="toggleFieldSenha('conf-senha-admin')" type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px">👁</button></div></div>
           </div>
           <div style="margin-top:12px"><button class="btn btn-primary" onclick="salvarSenha('admin')">Salvar senha admin</button></div>
         </div>
@@ -441,7 +441,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="modal-header"><div class="modal-title">Novo conteúdo</div><button class="modal-close" onclick="closeModal('modal-novo-conteudo')">×</button></div>
     <div class="modal-body">
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="input-tipo"><option>Feed</option><option>Reels</option><option>Stories</option><option>Copy</option><option>Tráfego</option><option>LinkedIn</option></select></div>
+        <div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="input-tipo"><option>Feed</option><option>Reels</option><option>Stories</option><option>Estático</option><option>Carrossel</option><option>Foto</option><option>Copy</option><option>Tráfego</option><option>LinkedIn</option></select></div>
         <div class="form-group"><label class="form-label">Data de publicação</label><input class="form-input" id="input-data" type="date"/></div>
       </div>
       <div class="form-row">
@@ -541,7 +541,7 @@ const SB='https://uktipppjixvzolvgbmzp.supabase.co',SK='sb_publishable_jyflrkWnr
 const COLORS=['#c8f55a','#5ab4ff','#a78bfa','#34d399','#ffb547','#ff5a5a','#f472b6','#38bdf8','#fb923c'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const STATUS_LIST=['Planejamento','Revisão Interna','Correção Interna','Aprovação de Planejamento','Produção de Arte','Revisão de Arte','Correção de Arte','Subir no mLabs'];
-const TC={'Feed':'#5ab4ff','Reels':'#a78bfa','Stories':'#ffb547','Copy':'#34d399','Tráfego':'#ff5a5a','LinkedIn':'#38bdf8'};
+const TC={'Feed':'#5ab4ff','Reels':'#a78bfa','Stories':'#ffb547','Estático':'#818cf8','Carrossel':'#c084fc','Foto':'#fb923c','Copy':'#34d399','Tráfego':'#ff5a5a','LinkedIn':'#38bdf8'};
 const TAG_MAP={'cliente-video':{label:'🟡 Cliente grava vídeo',color:'var(--amber)',bg:'var(--amber-dim)'},'solicitar-material':{label:'🔵 Solicitar material',color:'var(--blue)',bg:'var(--blue-dim)'}};
 
 let clientes=[],conteudos=[],clienteAtivo=null,mesAtivo=null,cardEdit=null,selColor=COLORS[0],isAdmin=false,statusSel=null,clienteView='kanban',calGeralMes=null,selTagVal='';
@@ -1355,7 +1355,9 @@ function renderApCard(item, jaRespondido){
     </div>
     <div class="comment-area" id="cmt-${item.id}">
       <input class="form-input" style="margin-top:8px" placeholder="Descreva o ajuste necessário..." id="obs-${item.id}"/>
-    </div>`:`<div style="padding:10px 0;font-size:12px;color:var(--text3);text-align:center">${jaAprovado?'✓ Você já aprovou este conteúdo':'✗ Você já solicitou ajuste neste conteúdo'}</div>`}
+    </div>
+    <button id="confirm-${item.id}" onclick="confirmarApCard('${item.id}')" style="display:none;width:100%;margin-top:10px;padding:10px;border-radius:8px;background:var(--accent);color:var(--accent-text);border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Confirmar resposta</button>`
+    :`<div style="padding:10px 0;font-size:12px;color:${jaAprovado?'var(--teal)':'var(--red)'};text-align:center;font-weight:500">${jaAprovado?'✓ Você já aprovou este conteúdo':'✗ Você já solicitou ajuste neste conteúdo'}</div>`}
   </div>`;
 }
 
@@ -1411,8 +1413,41 @@ function toggleAp(id,tipo){
   card.querySelector('.approve').classList.remove('selected');
   card.querySelector('.reject').classList.remove('selected');
   const cmt=document.getElementById('cmt-'+id);
-  if(tipo==='approve'){card.classList.add('approved');card.querySelector('.approve').classList.add('selected');cmt.classList.remove('show');}
-  else{card.classList.add('rejected');card.querySelector('.reject').classList.add('selected');cmt.classList.add('show');}
+  const confirmBtn=document.getElementById('confirm-'+id);
+  if(tipo==='approve'){
+    card.classList.add('approved');
+    card.querySelector('.approve').classList.add('selected');
+    cmt.classList.remove('show');
+    if(confirmBtn)confirmBtn.style.display='block';
+  } else {
+    card.classList.add('rejected');
+    card.querySelector('.reject').classList.add('selected');
+    cmt.classList.add('show');
+    if(confirmBtn)confirmBtn.style.display='block';
+  }
+}
+
+async function confirmarApCard(id){
+  const tipo=apDec[id];
+  if(!tipo)return;
+  const obs=document.getElementById('obs-'+id)?.value||'';
+  try{
+    await upd('conteudos',{status:tipo==='approve'?'Aprovação de Planejamento':'Correção Interna',...(obs?{observacao:obs}:{})},`?id=eq.${id}`);
+    const card=document.getElementById('apc-'+id);
+    const actions=document.getElementById('actions-'+id);
+    const confirmBtn=document.getElementById('confirm-'+id);
+    if(actions)actions.innerHTML=`<div style="padding:10px 0;font-size:12px;color:${tipo==='approve'?'var(--teal)':'var(--red)'};text-align:center;font-weight:500">${tipo==='approve'?'✓ Aprovado':'✗ Ajuste solicitado'}</div>`;
+    if(confirmBtn)confirmBtn.remove();
+    showToastAp(tipo==='approve'?'Aprovado!':'Ajuste solicitado!', tipo==='approve'?'success':'error');
+  }catch(e){showToastAp('Erro ao enviar','error');}
+}
+
+function showToastAp(msg, type='success'){
+  const t=document.createElement('div');
+  t.style.cssText=`position:fixed;bottom:24px;right:24px;z-index:9999;background:${type==='success'?'var(--teal-dim)':'var(--red-dim)'};border:1px solid ${type==='success'?'rgba(52,211,153,0.3)':'rgba(255,90,90,0.3)'};border-radius:8px;padding:10px 16px;font-size:13px;color:${type==='success'?'var(--teal)':'var(--red)'};animation:slideUp 0.2s ease`;
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
 }
 
 async function enviarAprovacoes(cid,mes){
@@ -1614,6 +1649,8 @@ async function getTemaMensal(cid,mes){try{const r=await getAll('temas_mensais',`
 
 // UPLOAD
 async function uploadFile(file){
+  const MAX=1024*1024*1024; // 1GB
+  if(file.size>MAX){showToast('Arquivo muito grande. Máximo 1GB.','error');throw new Error('File too large');}
   const ext=file.name.split('.').pop().toLowerCase();
   const filename=`${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const res=await fetch(`${SB}/storage/v1/object/midias/${filename}`,{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':file.type,'x-upsert':'true'},body:file});
