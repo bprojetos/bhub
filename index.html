@@ -323,9 +323,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             <div style="font-size:12px;color:var(--text3);margin-top:2px" id="kanban-client-sub"></div>
           </div>
           <div style="display:flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:3px">
+            <button class="month-tab" id="view-materiais" onclick="setView('materiais')">Infos Cliente</button>
             <button class="month-tab active" id="view-kanban" onclick="setView('kanban')">Kanban</button>
             <button class="month-tab" id="view-cal" onclick="setView('cal')">Calendário</button>
-            <button class="month-tab" id="view-materiais" onclick="setView('materiais')">Materiais</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 8px">
             <button onclick="navegarMes(-1)" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1">‹</button>
@@ -1034,7 +1034,7 @@ async function renderMateriais(cid){
       ${c.link_drive?`<a href="${c.link_drive}" target="_blank" class="btn btn-ghost" style="display:inline-flex;text-decoration:none">📁 Pasta no Drive</a>`:''}
     </div>`;
   }
-  html+=`<div class="section-header"><div class="section-title">Materiais</div><button class="btn btn-primary" onclick="openModalMaterial()">+ Adicionar</button></div><div id="materiais-list"><div class="loading"><div class="spinner"></div> Carregando...</div></div></div>`;
+  html+=`<div class="section-header" style="margin-top:20px"><div class="section-title">Materiais de referência</div><button class="btn btn-primary" onclick="openModalMaterial()">+ Adicionar</button></div><div id="materiais-list"><div class="loading"><div class="spinner"></div> Carregando...</div></div></div>`;
   view.innerHTML=html;
   try{
     const mats=await getAll('materiais',`?cliente_id=eq.${cid}&order=criado_em.desc`);
