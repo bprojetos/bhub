@@ -210,6 +210,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .cal-event:hover{opacity:0.8;}
 
 
+
+/* NOTIFICAÇÕES */
+.notif-popup{position:fixed;top:60px;right:20px;z-index:9998;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:12px 16px;max-width:320px;min-width:260px;box-shadow:0 8px 32px rgba(0,0,0,0.4);animation:slideDown 0.2s ease;display:flex;align-items:flex-start;gap:10px;}
+@keyframes slideDown{from{transform:translateY(-8px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.notif-popup-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.notif-popup-content{}
+.notif-popup-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.notif-popup-sub{font-size:11px;color:var(--text3);}
+.notif-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;}
+.notif-item.unread{border-color:rgba(200,245,90,0.2);background:var(--accent-dim);}
+.notif-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px;}
+.notif-texto{font-size:13px;color:var(--text);flex:1;line-height:1.4;}
+.notif-tempo{font-size:10px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace;}
 /* CHAT */
 .chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 200px);max-width:700px;}
 .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
@@ -301,6 +314,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </button>
       <div class="nav-label" style="margin-top:8px">Clientes</div>
       <div id="sidebar-clients"></div>
+      <button class="nav-item" id="nav-notificacoes" onclick="showScreen('notificacoes')">
+        <div class="nav-dot" style="background:var(--red)"></div>Notificações
+        <span id="notif-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px">0</span>
+      </button>
       <div id="nav-admin-block" style="display:none">
         <div class="nav-label" style="margin-top:8px">Administração</div>
         <button class="nav-item" id="nav-clientes" onclick="showScreen('config-clientes')">
@@ -387,6 +404,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           </div>
         </div>
         <div id="cal-geral-grid"></div>
+      </div>
+
+      <!-- NOTIFICAÇÕES -->
+      <div class="screen" id="screen-notificacoes">
+        <div class="section-header">
+          <div class="section-title">Notificações</div>
+          <button class="btn btn-ghost" onclick="limparNotificacoes()">Limpar todas</button>
+        </div>
+        <div id="notif-list" style="max-width:700px"><div class="loading"><div class="spinner"></div> Carregando...</div></div>
       </div>
 
       <!-- CONFIG CLIENTES -->
@@ -595,6 +621,7 @@ function entrar(){
   document.getElementById('login-wrap').classList.remove('show');
   document.getElementById('app-layout').classList.add('show');
   aplicarRole();loadApp();
+  setTimeout(iniciarNotifRealtime,2000);
 }
 
 function aplicarRole(){
@@ -622,7 +649,7 @@ async function init(){
     renderAprovacaoPage(hash.replace('#aprovacao/',''));return;
   }
   const saved=sessionStorage.getItem('bhub');
-  if(saved){document.getElementById('login-wrap').classList.remove('show');document.getElementById('app-layout').classList.add('show');aplicarRole();await loadApp();}
+  if(saved){document.getElementById('login-wrap').classList.remove('show');document.getElementById('app-layout').classList.add('show');aplicarRole();await loadApp();setTimeout(iniciarNotifRealtime,2000);}
 }
 
 async function loadApp(){await loadClientes();showScreen('dashboard');}
@@ -664,6 +691,10 @@ async function showScreen(id,cid){
     document.getElementById('nav-calendario').classList.add('active');
     if(!calGeralMes){const n=new Date();calGeralMes=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
     renderCalendarioGeral();
+  } else if(id==='notificacoes'){
+    document.getElementById('topbar-title').textContent='Notificações';
+    document.getElementById('nav-notificacoes').classList.add('active');
+    renderNotificacoes();
   } else if(id==='config-clientes'){
     document.getElementById('topbar-title').textContent='Gerenciar clientes';
     document.getElementById('nav-clientes').classList.add('active');
@@ -759,6 +790,49 @@ function toggleDemandaGrupo(id,header){
   if(arrow)arrow.style.transform=open?'rotate(180deg)':'';
 }
 
+async function renderCorrecoes(cid){
+  const view=document.getElementById('cliente-view');
+  view.style.cssText='';
+  view.innerHTML='<div class="loading"><div class="spinner"></div> Carregando...</div>';
+  try{
+    const data=await getAll('conteudos',`?cliente_id=eq.${cid}&order=criado_em.desc`);
+    conteudos=data;
+    const correcoes=data.filter(x=>['Correção Interna','Correção de Arte'].includes(x.status));
+    let html=`<div style="max-width:800px">
+      <div class="section-header">
+        <div class="section-title">Correções pendentes</div>
+        <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${correcoes.length} pendente${correcoes.length!==1?'s':''}</div>
+      </div>`;
+    if(!correcoes.length){
+      html+=`<div class="empty-state"><div class="empty-title">Nenhuma correção pendente</div><div class="empty-sub">Todos os conteúdos estão em dia</div></div>`;
+    } else {
+      html+=correcoes.map(card=>{
+        const tc=TC[card.tipo]||'#888';
+        const isCli=card.status==='Correção Cliente';
+        const corColor=isCli?'var(--red)':'var(--amber)';
+        const corBg=isCli?'var(--red-dim)':'var(--amber-dim)';
+        const corBorder=isCli?'rgba(255,90,90,0.2)':'rgba(255,181,71,0.2)';
+        return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:10px;cursor:pointer" onclick="openDetail('${card.id}')">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:${tc}22;color:${tc}">${card.tipo}</div>
+              <div style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:${corBg};color:${corColor};border:1px solid ${corBorder}">${card.status}</div>
+              ${card.data_publicacao?`<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">${getMesLabel(card.mes||'')} · ${formatDate(card.data_publicacao)}</div>`:''}
+            </div>
+            ${card.responsavel?`<div style="font-size:11px;color:var(--text3);background:var(--bg4);padding:2px 8px;border-radius:4px;white-space:nowrap">${card.responsavel}</div>`:''}
+          </div>
+          ${card.copy?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${card.copy}</div>`:''}
+          ${card.observacao?`<div style="padding:8px 10px;border-radius:6px;background:${corBg};border:1px solid ${corBorder};font-size:12px;color:${corColor};line-height:1.5">✎ ${card.observacao}</div>`:'<div style="font-size:12px;color:var(--text3);font-style:italic">Sem observação</div>'}
+        </div>`;
+      }).join('');
+    }
+    html+=`</div>`;
+    view.innerHTML=html;
+  }catch(e){view.innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';console.error(e);}
+}
+
+
+
 function renderMesPicker(){
   const [y,m]=mesAtivo.split('-').map(Number);
   const sm=document.getElementById('sel-mes');
@@ -842,7 +916,12 @@ async function onDrop(e,status){
   if(!dragCardId)return;
   const card=conteudos.find(x=>x.id===dragCardId);
   if(!card||card.status===status)return;
-  try{await upd('conteudos',{status},`?id=eq.${dragCardId}`);showToast(`Movido para ${status}`);dragCardId=null;await renderKanban(clienteAtivo.id);}
+  try{
+    const cardMovido=conteudos.find(x=>x.id===dragCardId);
+    await upd('conteudos',{status},`?id=eq.${dragCardId}`);
+    await registrarNotif(`moveu "${cardMovido?.tipo||'conteúdo'}" para ${status}`,clienteAtivo?.id);
+    showToast(`Movido para ${status}`);dragCardId=null;await renderKanban(clienteAtivo.id);
+  }
   catch(e){showToast('Erro ao mover','error');}
 }
 
@@ -940,6 +1019,12 @@ function openDetail(id){
     <div class="form-group"><label class="form-label">Responsável pela produção</label><input class="form-input" id="e-resp-prod" value="${card.responsavel_producao||''}" placeholder="ex: João (vídeo), Maria (arte)..." list="colaboradores-list"/></div>
     <div class="form-group"><label class="form-label">Observação</label><input class="form-input" id="e-obs" value="${card.observacao||''}" placeholder="Referência, correção solicitada..."/></div>`;
   uploadedUrls.edit=card.midias_urls&&card.midias_urls.length?[...card.midias_urls]:(card.midia_url?[card.midia_url]:[]);
+  // Pre-highlight current status immediately
+  setTimeout(()=>{
+    document.querySelectorAll('.status-btn').forEach(b=>b.style='');
+    const activeBtn=document.getElementById('sb-'+slugify(card.status));
+    if(activeBtn)activeBtn.style=getSS(card.status);
+  },0);
   setTimeout(()=>renderPreview('preview-edit',uploadedUrls.edit),50);
   document.getElementById('modal-card-detail').classList.add('open');
 }
@@ -978,6 +1063,7 @@ async function atualizarConteudo(){
       status:statusSel||cardEdit.status,
       tag_demanda:document.getElementById('e-tag').value
     },`?id=eq.${cardEdit.id}`);
+    if(statusSel&&statusSel!==cardEdit.status)await registrarNotif(`atualizou status para ${statusSel}`,clienteAtivo?.id);
     showToast('Conteúdo atualizado!');closeModal('modal-card-detail');cardEdit=null;statusSel=null;
     await renderKanban(clienteAtivo.id);
   }catch(e){showToast('Erro ao atualizar','error');console.error(e);}
@@ -1079,6 +1165,7 @@ async function salvarConteudo(){
       observacao:document.getElementById('input-obs').value,
       tag_demanda:document.getElementById('input-tag').value
     });
+    await registrarNotif(`criou um novo conteúdo (${document.getElementById('input-tipo').value}) para ${clienteAtivo?.nome}`,clienteAtivo?.id);
     showToast('Conteúdo criado!');closeModal('modal-novo-conteudo');await renderKanban(clienteAtivo.id);
   }catch(e){showToast('Erro ao salvar','error');console.error(e);}
 }
@@ -1561,6 +1648,92 @@ async function enviarAprovacoes(cid,mes){
   }catch(e){showToast('Erro ao enviar','error');}
 }
 
+
+
+// ---- NOTIFICAÇÕES ----
+let notifInterval=null;
+let lastNotifTime=null;
+let unreadCount=0;
+
+async function registrarNotif(texto, clienteId=null){
+  const nome=localStorage.getItem('bhub_nome')||'Equipe';
+  try{
+    await ins('notificacoes',{texto:`${nome}: ${texto}`,autor:nome,...(clienteId?{cliente_id:clienteId}:{})});
+  }catch(e){console.error('notif error',e);}
+}
+
+async function iniciarNotifRealtime(){
+  // Poll every 8 seconds for new notifications
+  if(notifInterval)clearInterval(notifInterval);
+  lastNotifTime=new Date().toISOString();
+  notifInterval=setInterval(async()=>{
+    try{
+      const novas=await getAll('notificacoes',`?criado_em=gt.${lastNotifTime}&order=criado_em.asc`);
+      if(novas.length){
+        lastNotifTime=novas[novas.length-1].criado_em;
+        novas.forEach(n=>mostrarNotifPopup(n));
+        unreadCount+=novas.length;
+        atualizarBadge();
+      }
+    }catch(e){}
+  },8000);
+}
+
+function mostrarNotifPopup(notif){
+  const popup=document.createElement('div');
+  popup.className='notif-popup';
+  const cliente=notif.cliente_id?clientes.find(x=>x.id===notif.cliente_id):null;
+  popup.innerHTML=`
+    <div class="notif-popup-icon">🔔</div>
+    <div class="notif-popup-content">
+      <div class="notif-popup-title">${notif.texto}</div>
+      <div class="notif-popup-sub">${cliente?'Cliente: '+cliente.nome+' · ':''}agora</div>
+    </div>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;margin-left:4px;line-height:1">×</button>`;
+  document.body.appendChild(popup);
+  setTimeout(()=>popup.remove(),6000);
+}
+
+function atualizarBadge(){
+  const badge=document.getElementById('notif-badge');
+  if(!badge)return;
+  if(unreadCount>0){badge.style.display='inline';badge.textContent=unreadCount>9?'9+':unreadCount;}
+  else{badge.style.display='none';}
+}
+
+async function renderNotificacoes(){
+  unreadCount=0;atualizarBadge();
+  const list=document.getElementById('notif-list');
+  if(!list)return;
+  try{
+    const notifs=await getAll('notificacoes','?order=criado_em.desc&limit=50');
+    if(!notifs.length){
+      list.innerHTML='<div class="empty-state"><div class="empty-title">Nenhuma notificação</div><div class="empty-sub">As ações da equipe aparecerão aqui</div></div>';
+      return;
+    }
+    list.innerHTML=notifs.map(n=>{
+      const cliente=n.cliente_id?clientes.find(x=>x.id===n.cliente_id):null;
+      const tempo=new Date(n.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      return `<div class="notif-item">
+        <div class="notif-dot"></div>
+        <div style="flex:1">
+          <div class="notif-texto">${n.texto}</div>
+          <div class="notif-tempo">${cliente?'📌 '+cliente.nome+' · ':''}${tempo}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){list.innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';}
+}
+
+async function limparNotificacoes(){
+  if(!isAdmin){showToast('Apenas admins podem limpar notificações','error');return;}
+  if(!confirm('Limpar todas as notificações?'))return;
+  try{
+    await del('notificacoes','?id=neq.00000000-0000-0000-0000-000000000000');
+    showToast('Notificações limpas');
+    renderNotificacoes();
+  }catch(e){showToast('Erro','error');}
+}
 
 // ---- CHAT ----
 let chatInterval=null;
