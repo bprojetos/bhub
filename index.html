@@ -456,12 +456,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="modal-header"><div class="modal-title">Novo conteúdo</div><button class="modal-close" onclick="closeModal('modal-novo-conteudo')">×</button></div>
     <div class="modal-body">
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="input-tipo"><option>Feed</option><option>Reels</option><option>Stories</option><option>Estático</option><option>Carrossel</option><option>Foto</option><option>Copy</option><option>Tráfego</option><option>LinkedIn</option></select></div>
+        <div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="input-tipo"><option>Reels</option><option>Stories</option><option>Estático</option><option>Carrossel</option><option>Foto</option><option>Copy</option><option>Tráfego</option><option>LinkedIn</option></select></div>
         <div class="form-group"><label class="form-label">Data de publicação</label><input class="form-input" id="input-data" type="date"/></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Responsável</label><input class="form-input" id="input-responsavel" placeholder="ex: Thainá" list="colaboradores-list"/><datalist id="colaboradores-list"></datalist></div>
-        <div class="form-group"><label class="form-label">Status inicial</label><select class="form-select" id="input-status"><option>Planejamento</option><option>Revisão Interna</option></select></div>
+        <div class="form-group"><label class="form-label">Status inicial</label><select class="form-select" id="input-status"><option>Planejamento</option><option>Revisão Interna</option><option>Correção Interna</option><option>Aprovação de Planejamento</option><option>Produção</option><option>Revisão de Arte</option><option>Correção de Arte</option><option>Subir no mLabs</option></select></div>
       </div>
       <div class="form-group">
         <label class="form-label">Tag de demanda</label>
@@ -556,7 +556,7 @@ const SB='https://uktipppjixvzolvgbmzp.supabase.co',SK='sb_publishable_jyflrkWnr
 const COLORS=['#c8f55a','#5ab4ff','#a78bfa','#34d399','#ffb547','#ff5a5a','#f472b6','#38bdf8','#fb923c'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const STATUS_LIST=['Planejamento','Revisão Interna','Correção Interna','Aprovação de Planejamento','Produção','Revisão de Arte','Correção de Arte','Subir no mLabs'];
-const TC={'Feed':'#5ab4ff','Reels':'#a78bfa','Stories':'#ffb547','Estático':'#818cf8','Carrossel':'#c084fc','Foto':'#fb923c','Copy':'#34d399','Tráfego':'#ff5a5a','LinkedIn':'#38bdf8'};
+const TC={'Reels':'#a78bfa','Stories':'#ffb547','Estático':'#818cf8','Carrossel':'#c084fc','Foto':'#fb923c','Copy':'#34d399','Tráfego':'#ff5a5a','LinkedIn':'#38bdf8'};
 const TAG_MAP={'cliente-video':{label:'🟡 Cliente grava vídeo',color:'var(--amber)',bg:'var(--amber-dim)'},'solicitar-material':{label:'🔵 Solicitar material',color:'var(--blue)',bg:'var(--blue-dim)'}};
 
 let clientes=[],conteudos=[],clienteAtivo=null,mesAtivo=null,cardEdit=null,selColor=COLORS[0],isAdmin=false,statusSel=null,clienteView='kanban',calGeralMes=null,selTagVal='';
@@ -1545,13 +1545,23 @@ async function carregarMensagens(cid){
       const isMe=m.autor===nomeLocal;
       const hora=new Date(m.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       const dia=new Date(m.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-      return '<div class="chat-msg '+(isMe?'me':'other')+'">'
+      return '<div class="chat-msg '+(isMe?'me':'other')+'" style="position:relative">'
         +'<div class="chat-bubble">'+m.mensagem+'</div>'
-        +'<div class="chat-meta">'+(isMe?'':'<strong>'+m.autor+'</strong> · ')+dia+' '+hora+'</div>'
+        +'<div class="chat-meta" style="display:flex;align-items:center;gap:6px">'
+          +(isMe?'':'<strong>'+m.autor+'</strong> · ')+dia+' '+hora
+          +(isAdmin?` <button onclick="deletarMensagem('${m.id}','${cid}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 2px;line-height:1;opacity:0.6" title="Excluir">×</button>`:'')
+        +'</div>'
         +'</div>';
     }).join(''):'<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">Nenhuma mensagem ainda. Diga oi!</div>';
     if(wasBottom)container.scrollTop=container.scrollHeight;
   }catch(e){console.error(e);}
+}
+
+async function deletarMensagem(id,cid){
+  try{
+    await del('chat_mensagens',`?id=eq.${id}`);
+    await carregarMensagens(cid);
+  }catch(e){showToast('Erro ao excluir','error');}
 }
 
 async function enviarMensagem(cid){
