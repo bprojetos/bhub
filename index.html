@@ -137,7 +137,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .col-revisao-interna .kanban-col-title{color:var(--blue);}
 .col-correcao-interna .kanban-col-title{color:var(--amber);}
 .col-aprovacao-de-planejamento .kanban-col-title{color:var(--purple);}
-.col-producao-de-arte .kanban-col-title{color:var(--pink);}
+.col-producao .kanban-col-title{color:var(--pink);}
 .col-revisao-de-arte .kanban-col-title{color:var(--blue);}
 .col-correcao-de-arte .kanban-col-title{color:var(--amber);}
 .col-subir-no-mlabs .kanban-col-title{color:var(--teal);}
@@ -209,6 +209,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .cal-event{border-radius:4px;padding:3px 6px;font-size:10px;font-weight:500;margin-bottom:3px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.15s;}
 .cal-event:hover{opacity:0.8;}
 
+
+/* CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 200px);max-width:700px;}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
+.chat-msg{display:flex;flex-direction:column;max-width:75%;}
+.chat-msg.me{align-self:flex-end;align-items:flex-end;}
+.chat-msg.other{align-self:flex-start;align-items:flex-start;}
+.chat-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;word-break:break-word;}
+.chat-msg.me .chat-bubble{background:var(--accent);color:var(--accent-text);border-radius:12px 12px 2px 12px;}
+.chat-msg.other .chat-bubble{background:var(--bg4);color:var(--text);border-radius:12px 12px 12px 2px;}
+.chat-meta{font-size:10px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace;}
+.chat-input-wrap{display:flex;gap:8px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);}
 /* PERFORMANCE */
 .perf-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden;}
 .perf-card-header{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:12px;}
@@ -344,7 +356,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             <button class="month-tab" id="view-materiais" onclick="setView('materiais')">Infos Cliente</button>
             <button class="month-tab active" id="view-kanban" onclick="setView('kanban')">Kanban</button>
             <button class="month-tab" id="view-cal" onclick="setView('cal')">Calendário</button>
+            <button class="month-tab" id="view-correcoes" onclick="setView('correcoes')">Correções</button>
+            <button class="month-tab" id="view-demandas" onclick="setView('demandas')">Por responsável</button>
             <button class="month-tab" id="view-performance" onclick="setView('performance')">Performance</button>
+            <button class="month-tab" id="view-chat" onclick="setView('chat')">💬 Chat</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 8px">
             <button onclick="navegarMes(-1)" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1">‹</button>
@@ -540,7 +555,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 const SB='https://uktipppjixvzolvgbmzp.supabase.co',SK='sb_publishable_jyflrkWnrZemySUWCsDBTQ__ISh3ZJl';
 const COLORS=['#c8f55a','#5ab4ff','#a78bfa','#34d399','#ffb547','#ff5a5a','#f472b6','#38bdf8','#fb923c'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const STATUS_LIST=['Planejamento','Revisão Interna','Correção Interna','Aprovação de Planejamento','Produção de Arte','Revisão de Arte','Correção de Arte','Subir no mLabs'];
+const STATUS_LIST=['Planejamento','Revisão Interna','Correção Interna','Aprovação de Planejamento','Produção','Revisão de Arte','Correção de Arte','Subir no mLabs'];
 const TC={'Feed':'#5ab4ff','Reels':'#a78bfa','Stories':'#ffb547','Estático':'#818cf8','Carrossel':'#c084fc','Foto':'#fb923c','Copy':'#34d399','Tráfego':'#ff5a5a','LinkedIn':'#38bdf8'};
 const TAG_MAP={'cliente-video':{label:'🟡 Cliente grava vídeo',color:'var(--amber)',bg:'var(--amber-dim)'},'solicitar-material':{label:'🔵 Solicitar material',color:'var(--blue)',bg:'var(--blue-dim)'}};
 
@@ -661,14 +676,17 @@ async function showScreen(id,cid){
 
 function setView(v){
   clienteView=v;
-  ['kanban','cal','materiais','performance'].forEach(x=>{
+  ['kanban','cal','materiais','correcoes','demandas','performance','chat'].forEach(x=>{
     const el=document.getElementById('view-'+x);
     if(el)el.classList.toggle('active',x===v);
   });
   if(v==='kanban')renderKanban(clienteAtivo.id);
   else if(v==='cal')renderCalCliente(clienteAtivo.id);
   else if(v==='materiais')renderMateriais(clienteAtivo.id);
+  else if(v==='correcoes')renderCorrecoes(clienteAtivo.id);
+  else if(v==='demandas')renderDemandas(clienteAtivo.id);
   else if(v==='performance')renderPerformance(clienteAtivo.id);
+  else if(v==='chat')renderChat(clienteAtivo.id);
 }
 
 function renderMesPicker(){
@@ -703,7 +721,7 @@ async function updateStats(){
     const n=new Date(),mes=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
     const all=await getAll('conteudos',`?mes=eq.${mes}`);
     document.getElementById('stat-total').textContent=all.length;
-    document.getElementById('stat-producao').textContent=all.filter(x=>['Produção de Arte','Revisão de Arte'].includes(x.status)).length;
+    document.getElementById('stat-producao').textContent=all.filter(x=>['Produção','Revisão de Arte'].includes(x.status)).length;
     document.getElementById('stat-aguardando').textContent=all.filter(x=>x.status==='Aprovação de Planejamento').length;
     document.getElementById('stat-correcoes').textContent=all.filter(x=>['Correção Interna','Correção de Arte'].includes(x.status)).length;
   }catch(e){console.error(e);}
@@ -725,7 +743,7 @@ async function renderClientsGrid(){
       const pct=total?Math.round((mlabs/total)*100):0;
       const cor=cc.filter(x=>['Correção Interna','Correção de Arte'].includes(x.status)).length;
       const agu=cc.filter(x=>x.status==='Aprovação de Planejamento').length;
-      const prod=cc.filter(x=>['Produção de Arte','Revisão de Arte'].includes(x.status)).length;
+      const prod=cc.filter(x=>['Produção','Revisão de Arte'].includes(x.status)).length;
       const logoEl=c.logo_url?`<img src="${c.logo_url}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">`:`<div style="width:32px;height:32px;border-radius:6px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:${c.cor};flex-shrink:0">${c.nome.charAt(0)}</div>`;
       return `<div class="client-card" style="--client-color:${c.cor}" onclick="showScreen('cliente','${c.id}')">
         <div class="client-card-header">
@@ -764,7 +782,7 @@ function getSS(s){
     'Revisão Interna':'background:var(--blue-dim);color:var(--blue);border-color:rgba(90,180,255,0.3);',
     'Correção Interna':'background:var(--amber-dim);color:var(--amber);border-color:rgba(255,181,71,0.3);',
     'Aprovação de Planejamento':'background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3);',
-    'Produção de Arte':'background:var(--pink-dim);color:var(--pink);border-color:rgba(244,114,182,0.3);',
+    'Produção':'background:var(--pink-dim);color:var(--pink);border-color:rgba(244,114,182,0.3);',
     'Revisão de Arte':'background:var(--blue-dim);color:var(--blue);border-color:rgba(90,180,255,0.3);',
     'Correção de Arte':'background:var(--amber-dim);color:var(--amber);border-color:rgba(255,181,71,0.3);',
     'Subir no mLabs':'background:var(--teal-dim);color:var(--teal);border-color:rgba(52,211,153,0.3);',
@@ -793,14 +811,17 @@ async function renderKanban(cid){
 function renderCard(card){
   const c=TC[card.tipo]||'#888',hasImg=card.midia_url&&card.midia_url.startsWith('http');
   const isCorrecao=['Correção Interna','Correção de Arte'].includes(card.status);
-  const corColor='var(--amber)';
   const tag=card.tag_demanda&&TAG_MAP[card.tag_demanda];
+  const statusStyle=getSS(card.status);
   return `<div class="kanban-card" draggable="true" ondragstart="onDragStart(event,'${card.id}')" ondragend="onDragEnd(event)" onclick="openDetail('${card.id}')">
     ${hasImg?`<div style="width:100%;height:72px;border-radius:6px;margin-bottom:8px;overflow:hidden;background:var(--bg4)"><img src="${card.midia_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.remove()"/></div>`:''}
-    <div class="kcard-type"><div class="type-dot" style="background:${c}"></div><span style="color:${c}">${card.tipo}</span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div class="kcard-type" style="margin-bottom:0"><div class="type-dot" style="background:${c}"></div><span style="color:${c}">${card.tipo}</span></div>
+      <div style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;${statusStyle}">${card.status}</div>
+    </div>
     ${tag?`<div class="tag-badge" style="background:${tag.bg};color:${tag.color}">${tag.label}</div>`:''}
     <div class="kcard-copy">${card.copy||'<span style="color:var(--text3);font-style:italic">sem copy</span>'}</div>
-    ${isCorrecao&&card.observacao?`<div style="margin-top:8px;padding:7px 9px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(255,181,71,0.2);font-size:11px;color:${corColor};line-height:1.4">✎ ${card.observacao}</div>`:''}
+    ${isCorrecao&&card.observacao?`<div style="margin-top:8px;padding:7px 9px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(255,181,71,0.2);font-size:11px;color:var(--amber);line-height:1.4">✎ ${card.observacao}</div>`:''}
     <div class="kcard-footer"><div class="kcard-date">${card.data_publicacao?formatDate(card.data_publicacao):'—'}</div>${card.responsavel?`<div class="kcard-resp">${card.responsavel}</div>`:''}</div>
   </div>`;
 }
@@ -842,7 +863,11 @@ function openDetail(id){
       <label class="form-label">Status</label>
       <div class="status-select-grid">${STATUS_LIST.map(s=>`<button class="status-btn" id="sb-${slugify(s)}" onclick="selStatus('${s}')" style="${s===card.status?getSS(s):''}">${s}</button>`).join('')}</div>
     </div>
-    <div class="form-group"><label class="form-label">Link de referência (visível para o cliente)</label><input class="form-input" id="e-ref" value="${card.link_referencia||''}" placeholder="https://..."/></div>
+    <div class="form-group"><label class="form-label">Link de referência (visível para o cliente)</label>
+      <input class="form-input" id="e-ref" value="${card.link_referencia||''}" placeholder="https://..." oninput="previewRef(this.value)"/>
+      <div id="ref-preview" style="margin-top:8px">${card.link_referencia?`<div id="ref-preview-inner">${renderRefPreview(card.link_referencia)}</div>`:''}</div>
+    </div>
+    <div class="form-group"><label class="form-label">Responsável pela produção</label><input class="form-input" id="e-resp-prod" value="${card.responsavel_producao||''}" placeholder="ex: João (vídeo), Maria (arte)..." list="colaboradores-list"/></div>
     <div class="form-group"><label class="form-label">Observação</label><input class="form-input" id="e-obs" value="${card.observacao||''}" placeholder="Referência, correção solicitada..."/></div>`;
   uploadedUrls.edit=card.midias_urls&&card.midias_urls.length?[...card.midias_urls]:(card.midia_url?[card.midia_url]:[]);
   setTimeout(()=>renderPreview('preview-edit',uploadedUrls.edit),50);
@@ -878,6 +903,7 @@ async function atualizarConteudo(){
       midias_urls:medias,
       copy:document.getElementById('e-copy').value,
       link_referencia:document.getElementById('e-ref')?.value||'',
+      responsavel_producao:document.getElementById('e-resp-prod')?.value||'',
       observacao:document.getElementById('e-obs').value,
       status:statusSel||cardEdit.status,
       tag_demanda:document.getElementById('e-tag').value
@@ -1465,6 +1491,82 @@ async function enviarAprovacoes(cid,mes){
   }catch(e){showToast('Erro ao enviar','error');}
 }
 
+
+// ---- CHAT ----
+let chatInterval=null;
+
+async function renderChat(cid){
+  const view=document.getElementById('cliente-view');
+  view.style.cssText='';
+  const nomeLocal=localStorage.getItem('bhub_nome')||'';
+  view.innerHTML=`<div style="max-width:700px">
+    ${!nomeLocal?`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+      <div style="font-size:13px;font-weight:500;white-space:nowrap">Seu nome no chat:</div>
+      <input class="form-input" id="chat-nome-input" placeholder="ex: Billie, Thainá, Marcos..." style="flex:1" value="${nomeLocal}"/>
+      <button class="btn btn-primary" onclick="salvarNomeChat()">Salvar</button>
+    </div>`:`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text3)">Você: <strong style="color:var(--text)">${nomeLocal}</strong></div>
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="trocarNomeChat()">Trocar nome</button>
+    </div>`}
+    <div class="chat-wrap">
+      <div class="chat-messages" id="chat-messages"><div class="loading"><div class="spinner"></div></div></div>
+      <div class="chat-input-wrap">
+        <input class="form-input" id="chat-input" placeholder="Digite uma mensagem..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMensagem('${cid}');}"/>
+        <button class="btn btn-primary" onclick="enviarMensagem('${cid}')">Enviar</button>
+      </div>
+    </div>
+  </div>`;
+  await carregarMensagens(cid);
+  if(chatInterval)clearInterval(chatInterval);
+  chatInterval=setInterval(()=>carregarMensagens(cid),5000);
+}
+
+function salvarNomeChat(){
+  const nome=document.getElementById('chat-nome-input')?.value.trim();
+  if(!nome){showToast('Digite seu nome','error');return;}
+  localStorage.setItem('bhub_nome',nome);
+  showToast('Nome salvo!');
+  renderChat(clienteAtivo.id);
+}
+
+function trocarNomeChat(){
+  localStorage.removeItem('bhub_nome');
+  renderChat(clienteAtivo.id);
+}
+
+async function carregarMensagens(cid){
+  try{
+    const msgs=await getAll('chat_mensagens',`?cliente_id=eq.${cid}&order=criado_em.asc`);
+    const container=document.getElementById('chat-messages');
+    if(!container)return;
+    const nomeLocal=localStorage.getItem('bhub_nome')||'';
+    const wasBottom=container.scrollHeight-container.scrollTop<=container.clientHeight+50;
+    container.innerHTML=msgs.length?msgs.map(m=>{
+      const isMe=m.autor===nomeLocal;
+      const hora=new Date(m.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const dia=new Date(m.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+      return '<div class="chat-msg '+(isMe?'me':'other')+'">'
+        +'<div class="chat-bubble">'+m.mensagem+'</div>'
+        +'<div class="chat-meta">'+(isMe?'':'<strong>'+m.autor+'</strong> · ')+dia+' '+hora+'</div>'
+        +'</div>';
+    }).join(''):'<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">Nenhuma mensagem ainda. Diga oi!</div>';
+    if(wasBottom)container.scrollTop=container.scrollHeight;
+  }catch(e){console.error(e);}
+}
+
+async function enviarMensagem(cid){
+  const input=document.getElementById('chat-input');
+  const msg=input?.value.trim();
+  if(!msg)return;
+  const nome=localStorage.getItem('bhub_nome');
+  if(!nome){showToast('Defina seu nome no chat primeiro','error');return;}
+  input.value='';
+  try{
+    await ins('chat_mensagens',{cliente_id:cid,autor:nome,mensagem:msg});
+    await carregarMensagens(cid);
+  }catch(e){showToast('Erro ao enviar','error');}
+}
+
 // PERFORMANCE
 const PLATAFORMAS=['Meta Ads','Google Ads','LinkedIn Ads','TikTok Ads'];
 const PLAT_COLORS={'Meta Ads':'#1877f2','Google Ads':'#ea4335','LinkedIn Ads':'#0a66c2','TikTok Ads':'#010101'};
@@ -1477,7 +1579,9 @@ async function renderPerformance(cid){
     const campanhas=await getAll('campanhas',`?cliente_id=eq.${cid}&order=criado_em.desc`);
     let html=`<div style="max-width:900px"><div class="section-header"><div class="section-title">Campanhas</div><div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="exportarRelatorio('${cid}')">📄 Exportar relatório</button><button class="btn btn-primary" onclick="openModalCampanha()">+ Nova campanha</button></div></div>`;
     if(!campanhas.length){html+='<div class="empty-state"><div class="empty-title">Nenhuma campanha</div><div class="empty-sub">Clique em Nova campanha para começar</div></div>';}
-    else{for(const camp of campanhas){const criativos=await getAll('criativos',`?campanha_id=eq.${camp.id}&order=criado_em.desc`);const resumos=await getAll('resumos_semanais',`?campanha_id=eq.${camp.id}&order=semana.desc`);const pc=PLAT_COLORS[camp.plataforma]||'#888';const stCls={'Ativa':'status-ativa','Pausada':'status-pausada','Encerrada':'status-encerrada'}[camp.status]||'';html+=`<div class="perf-card"><div class="perf-card-header" onclick="togglePerfCard('pc-${camp.id}')"><div style="display:flex;align-items:center;gap:10px;flex:1"><div class="plataforma-badge" style="background:${pc}22;color:${pc}">${camp.plataforma}</div><div style="font-weight:500">${camp.nome}</div><span class="status-pill ${stCls}">${camp.status}</span></div><div style="display:flex;align-items:center;gap:10px">${camp.verba?`<span style="font-size:12px;color:var(--text2)">R$ ${Number(camp.verba).toLocaleString('pt-BR')}</span>`:''}${camp.objetivo?`<span style="font-size:11px;color:var(--text3)">${camp.objetivo}</span>`:''}<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();editarCampanha('${camp.id}')">Editar</button><button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();deletarCampanha('${camp.id}','${camp.nome}')">×</button></div></div><div class="perf-card-body" id="pc-${camp.id}"><div style="margin-bottom:16px"><div class="section-header" style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px">Criativos e Copys</div><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModalCriativo('${camp.id}')">+ Adicionar</button></div>${criativos.length?criativos.map(cr=>`<div class="criativo-item"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--bg4);color:var(--text2)">${cr.tipo}</span><span style="font-size:10px;color:${cr.status==='Ativo'?'var(--teal)':'var(--text3)'}">${cr.status}</span></div>${cr.descricao?`<div style="font-size:12px;font-weight:500;margin-bottom:4px">${cr.descricao}</div>`:''} ${cr.copy?`<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:6px">${cr.copy}</div>`:''} ${cr.midia_url?(cr.midia_url.match(/\.(mp4|mov|webm|avi)/i)?`<video src="${cr.midia_url}" controls style="width:100%;max-height:180px;border-radius:8px;margin-top:6px;display:block;background:#000"></video>`:`<img src="${cr.midia_url}" style="width:100%;max-height:180px;object-fit:contain;border-radius:8px;margin-top:6px;display:block;background:var(--bg4)" onerror="this.remove()"/>`):''}</div><div style="display:flex;gap:4px"><button onclick="editarCriativo('${cr.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:11px;padding:3px 8px">Editar</button><button onclick="deletarCriativo('${cr.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px">×</button></div></div></div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum criativo</div>'}</div><div><div class="section-header" style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px">Resumos Semanais</div><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModalResumo('${camp.id}')">+ Adicionar semana</button></div>${resumos.length?resumos.map(r=>`<div class="resumo-semana"><div class="resumo-semana-header"><div style="font-size:12px;font-weight:600">Semana de ${r.semana}</div><button onclick="deletarResumo('${r.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px">×</button></div><div class="metric-grid"><div class="metric-box"><div class="metric-label">Impressões</div><div class="metric-value">${r.impressoes?Number(r.impressoes).toLocaleString('pt-BR'):'—'}</div></div><div class="metric-box"><div class="metric-label">Cliques</div><div class="metric-value">${r.cliques?Number(r.cliques).toLocaleString('pt-BR'):'—'}</div></div><div class="metric-box"><div class="metric-label">Conversões</div><div class="metric-value">${r.conversoes||'—'}</div></div><div class="metric-box"><div class="metric-label">ROAS</div><div class="metric-value">${r.roas?Number(r.roas).toFixed(2)+'x':'—'}</div></div><div class="metric-box"><div class="metric-label">Verba gasta</div><div class="metric-value">${r.verba_gasta?'R$'+Number(r.verba_gasta).toLocaleString('pt-BR'):'—'}</div></div></div>${r.resumo?`<div style="font-size:12px;color:var(--text2);line-height:1.6;padding:8px;background:var(--bg4);border-radius:6px">${r.resumo}</div>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum resumo</div>'}</div></div></div>`;}}
+    else{for(const camp of campanhas){const criativos=await getAll('criativos',`?campanha_id=eq.${camp.id}&order=criado_em.desc`);const resumos=await getAll('resumos_semanais',`?campanha_id=eq.${camp.id}&order=semana.desc`);const pc=PLAT_COLORS[camp.plataforma]||'#888';const stCls={'Ativa':'status-ativa','Pausada':'status-pausada','Encerrada':'status-encerrada'}[camp.status]||'';html+=`<div class="perf-card"><div class="perf-card-header" onclick="togglePerfCard('pc-${camp.id}')"><div style="display:flex;align-items:center;gap:10px;flex:1"><div class="plataforma-badge" style="background:${pc}22;color:${pc}">${camp.plataforma}</div><div style="font-weight:500">${camp.nome}</div><span class="status-pill ${stCls}">${camp.status}</span></div><div style="display:flex;align-items:center;gap:10px">${camp.verba?`<span style="font-size:12px;color:var(--text2)">R$ ${Number(camp.verba).toLocaleString('pt-BR')}</span>`:''}${camp.objetivo?`<span style="font-size:11px;color:var(--text3)">${camp.objetivo}</span>`:''}<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();editarCampanha('${camp.id}')">Editar</button><button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();deletarCampanha('${camp.id}','${camp.nome}')">×</button></div></div><div class="perf-card-body" id="pc-${camp.id}"><div style="margin-bottom:16px"><div class="section-header" style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px">Criativos e Copys</div><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModalCriativo('${camp.id}')">+ Adicionar</button></div>${criativos.length?criativos.map(cr=>`<div class="criativo-item"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--bg4);color:var(--text2)">${cr.tipo}</span><span style="font-size:10px;color:${cr.status==='Ativo'?'var(--teal)':'var(--text3)'}">${cr.status}</span></div>${cr.descricao?`<div style="font-size:12px;font-weight:500;margin-bottom:4px">${cr.descricao}</div>`:''} ${cr.copy?`<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:6px">${cr.copy}</div>`:''} ${cr.midia_url?(cr.midia_url.match(/\.(mp4|mov|webm|avi)/i)?`<video src="${cr.midia_url}" controls style="width:100%;max-height:180px;border-radius:8px;margin-top:6px;display:block;background:#000"></video>`:`<img src="${cr.midia_url}" style="width:100%;max-height:180px;object-fit:contain;border-radius:8px;margin-top:6px;display:block;background:var(--bg4)" onerror="this.remove()"/>`):''}</div><div style="display:flex;gap:4px"><button onclick="editarCriativo('${cr.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:11px;padding:3px 8px">Editar</button><button onclick="deletarCriativo('${cr.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px">×</button></div></div></div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum criativo</div>'}</div><div><div class="section-header" style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px">Resumos Semanais</div><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModalResumo('${camp.id}')">+ Adicionar semana</button></div>${resumos.length?resumos.map(r=>`<div class="resumo-semana"><div class="resumo-semana-header"><div style="font-size:12px;font-weight:600">Semana de ${r.semana}</div><button onclick="deletarResumo('${r.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px">×</button></div><div class="metric-grid"><div class="metric-box"><div class="metric-label">Impressões</div><div class="metric-value">${r.impressoes?Number(r.impressoes).toLocaleString('pt-BR'):'—'}</div></div><div class="metric-box"><div class="metric-label">Cliques</div><div class="metric-value">${r.cliques?Number(r.cliques).toLocaleString('pt-BR'):'—'}</div></div><div class="metric-box"><div class="metric-label">Conversões</div><div class="metric-value">${r.conversoes||'—'}</div></div><div class="metric-box"><div class="metric-label">ROAS</div><div class="metric-value">${r.roas?Number(r.roas).toFixed(2)+'x':'—'}</div></div><div class="metric-box"><div class="metric-label">Verba gasta</div><div class="metric-value">${r.verba_gasta?'R$'+Number(r.verba_gasta).toLocaleString('pt-BR'):'—'}</div></div></div>${r.resumo?`<div style="font-size:12px;color:var(--text2);line-height:1.6;padding:8px;background:var(--bg4);border-radius:6px;margin-bottom:6px">${r.resumo}</div>`:''}
+                  ${r.proximos_passos?`<div style="font-size:12px;color:var(--teal);line-height:1.6;padding:8px;background:var(--teal-dim);border-radius:6px;margin-bottom:6px">📋 <strong>Próximos passos:</strong> ${r.proximos_passos}</div>`:''}
+                  ${r.alertas?`<div style="font-size:12px;color:var(--amber);line-height:1.6;padding:8px;background:var(--amber-dim);border-radius:6px">⚠️ <strong>Alertas:</strong> ${r.alertas}</div>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum resumo</div>'}</div></div></div>`;}}
     html+='</div>';view.innerHTML=html;
   }catch(e){view.innerHTML='<div class="empty-state"><div class="empty-title">Erro</div></div>';console.error(e);}
 }
@@ -1599,11 +1703,11 @@ function openModalResumo(campId){
   resumoCampId=campId;
   const hoje=new Date();const sem=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
   const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-resumo-temp';
-  ov.innerHTML=`<div class="modal" style="max-width:560px"><div class="modal-header"><div class="modal-title">Resumo semanal</div><button class="modal-close" onclick="document.getElementById('modal-resumo-temp').remove()">×</button></div><div class="modal-body"><div class="form-group"><label class="form-label">Semana (data de início)</label><input class="form-input" id="res-semana" type="date" value="${sem}"/></div><div class="metric-grid" style="margin-bottom:16px"><div class="form-group" style="margin-bottom:0"><label class="form-label">Impressões</label><input class="form-input" id="res-imp" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Cliques</label><input class="form-input" id="res-cli" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Conversões</label><input class="form-input" id="res-conv" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">ROAS</label><input class="form-input" id="res-roas" type="number" step="0.01" placeholder="0.00"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Verba gasta</label><input class="form-input" id="res-verba" type="number" placeholder="0.00"/></div></div><div class="form-group"><label class="form-label">Resumo / Observações</label><textarea class="form-textarea" id="res-texto" placeholder="Desempenho da semana, insights, otimizações..." style="min-height:100px"></textarea></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-resumo-temp').remove()">Cancelar</button><button class="btn btn-primary" onclick="salvarResumo()">Salvar</button></div></div>`;
+  ov.innerHTML=`<div class="modal" style="max-width:560px"><div class="modal-header"><div class="modal-title">Resumo semanal</div><button class="modal-close" onclick="document.getElementById('modal-resumo-temp').remove()">×</button></div><div class="modal-body"><div class="form-group"><label class="form-label">Semana (data de início)</label><input class="form-input" id="res-semana" type="date" value="${sem}"/></div><div class="metric-grid" style="margin-bottom:16px"><div class="form-group" style="margin-bottom:0"><label class="form-label">Impressões</label><input class="form-input" id="res-imp" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Cliques</label><input class="form-input" id="res-cli" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Conversões</label><input class="form-input" id="res-conv" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">ROAS</label><input class="form-input" id="res-roas" type="number" step="0.01" placeholder="0.00"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Verba gasta</label><input class="form-input" id="res-verba" type="number" placeholder="0.00"/></div></div><div class="form-group"><label class="form-label">Resumo / Observações</label><textarea class="form-textarea" id="res-texto" placeholder="Desempenho da semana, insights, otimizações..." style="min-height:80px"></textarea></div><div class="form-group"><label class="form-label">Próximos passos</label><textarea class="form-textarea" id="res-proximos" placeholder="O que precisa ser feito na próxima semana..." style="min-height:80px"></textarea></div><div class="form-group"><label class="form-label">⚠️ Alertas (trocar criativo, copy, ajuste de campanha...)</label><textarea class="form-textarea" id="res-alertas" placeholder="ex: Trocar criativo do conjunto A, copy com baixo CTR..." style="min-height:60px"></textarea></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-resumo-temp').remove()">Cancelar</button><button class="btn btn-primary" onclick="salvarResumo()">Salvar</button></div></div>`;
   document.body.appendChild(ov);
 }
 
-async function salvarResumo(){const s=document.getElementById('res-semana').value;if(!s){showToast('Informe a semana','error');return;}try{await ins('resumos_semanais',{campanha_id:resumoCampId,semana:s,impressoes:document.getElementById('res-imp').value||null,cliques:document.getElementById('res-cli').value||null,conversoes:document.getElementById('res-conv').value||null,roas:document.getElementById('res-roas').value||null,verba_gasta:document.getElementById('res-verba').value||null,resumo:document.getElementById('res-texto').value});showToast('Resumo salvo!');document.getElementById('modal-resumo-temp')?.remove();renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+async function salvarResumo(){const s=document.getElementById('res-semana').value;if(!s){showToast('Informe a semana','error');return;}try{await ins('resumos_semanais',{campanha_id:resumoCampId,semana:s,impressoes:document.getElementById('res-imp').value||null,cliques:document.getElementById('res-cli').value||null,conversoes:document.getElementById('res-conv').value||null,roas:document.getElementById('res-roas').value||null,verba_gasta:document.getElementById('res-verba').value||null,resumo:document.getElementById('res-texto').value,proximos_passos:document.getElementById('res-proximos')?.value||'',alertas:document.getElementById('res-alertas')?.value||''});showToast('Resumo salvo!');document.getElementById('modal-resumo-temp')?.remove();renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
 async function deletarResumo(id){if(!confirm('Remover?'))return;try{await del('resumos_semanais',`?id=eq.${id}`);renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
 
 async function exportarRelatorio(cid){
