@@ -460,7 +460,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="form-group"><label class="form-label">Data de publicação</label><input class="form-input" id="input-data" type="date"/></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Responsável</label><input class="form-input" id="input-responsavel" placeholder="ex: Thainá" list="colaboradores-list"/><datalist id="colaboradores-list"></datalist></div>
+        <div class="form-group"><label class="form-label">Quem criou a demanda</label><input class="form-input" id="input-responsavel" placeholder="ex: Thainá" list="colaboradores-list"/><datalist id="colaboradores-list"></datalist></div>
         <div class="form-group"><label class="form-label">Status inicial</label><select class="form-select" id="input-status"><option>Planejamento</option><option>Revisão Interna</option><option>Correção Interna</option><option>Aprovação de Planejamento</option><option>Produção</option><option>Revisão de Arte</option><option>Correção de Arte</option><option>Subir no mLabs</option></select></div>
       </div>
       <div class="form-group">
@@ -699,7 +699,7 @@ async function renderDemandas(cid){
     const pendMaterial=data.filter(x=>x.tag_demanda&&['cliente-video','solicitar-material'].includes(x.tag_demanda));
     const grupos={};
     data.forEach(card=>{
-      const resp=card.responsavel||'Sem responsável';
+      const resp=card.responsavel_producao||card.responsavel||'Sem responsável';
       if(!grupos[resp])grupos[resp]=[];
       grupos[resp].push(card);
     });
@@ -711,14 +711,52 @@ async function renderDemandas(cid){
     if(!respKeys.length){
       html+=`<div class="empty-state"><div class="empty-title">Nenhum conteúdo cadastrado</div><div class="empty-sub">Crie conteúdos no Kanban para aparecerem aqui</div></div>`;
     } else {
-      respKeys.forEach(resp=>{
+      respKeys.forEach((resp,idx)=>{
         const cards=grupos[resp];
-        html+=`<div style="margin-bottom:24px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="width:28px;height:28px;border-radius:50%;background:var(--accent-dim);color:var(--accent);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${resp.charAt(0).toUpperCase()}</div><div style="font-size:14px;font-weight:600">${resp}</div><div style="font-size:11px;color:var(--text3);background:var(--bg4);padding:2px 8px;border-radius:10px;font-family:'DM Mono',monospace">${cards.length}</div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">${cards.map(card=>{const tc=TC[card.tipo]||'#888';const ss=getSS(card.status);return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;cursor:pointer" onclick="openDetail('${card.id}')"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:10px;font-weight:600;color:${tc}">${card.tipo}</div><div style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;${ss}">${card.status}</div></div><div style="font-size:12px;color:var(--text2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${card.copy||'sem copy'}</div>${card.data_publicacao?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace">${getMesLabel(card.mes||'')} · ${formatDate(card.data_publicacao)}</div>`:''}</div>`;}).join('')}</div></div>`;
+        const correcoes=cards.filter(x=>['Correção Interna','Correção de Arte'].includes(x.status)).length;
+        html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:8px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer" onclick="toggleDemandaGrupo('dg-${idx}',this)">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-dim);color:var(--accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${resp.charAt(0).toUpperCase()}</div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:600">${resp}</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px">${cards.length} demanda${cards.length!==1?'s':''} ${correcoes?`· <span style="color:var(--amber)">${correcoes} correção</span>`:''}</div>
+            </div>
+            <span id="dg-arrow-${idx}" style="color:var(--text3);font-size:12px;transition:transform 0.2s">▼</span>
+          </div>
+          <div id="dg-${idx}" style="display:none;border-top:1px solid var(--border)">
+            ${cards.map(card=>{
+              const tc=TC[card.tipo]||'#888';
+              const ss=getSS(card.status);
+              const isCorrecao=['Correção Interna','Correção de Arte'].includes(card.status);
+              return `<div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''" onclick="openDetail('${card.id}')">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+                    <span style="font-size:10px;font-weight:600;color:${tc}">${card.tipo}</span>
+                    ${card.mes?`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${getMesLabel(card.mes)}</span>`:''}
+                    ${card.data_publicacao?`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${formatDate(card.data_publicacao)}</span>`:''}
+                  </div>
+                  <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${card.copy||'sem copy'}</div>
+                  ${isCorrecao&&card.observacao?`<div style="font-size:11px;color:var(--amber);margin-top:3px">✎ ${card.observacao}</div>`:''}
+                </div>
+                <div style="font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;${ss}">${card.status}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
       });
     }
     html+=`</div>`;
     view.innerHTML=html;
   }catch(e){view.innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';console.error(e);}
+}
+
+function toggleDemandaGrupo(id,header){
+  const body=document.getElementById(id);
+  const idx=id.replace('dg-','');
+  const arrow=document.getElementById('dg-arrow-'+idx);
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  if(arrow)arrow.style.transform=open?'rotate(180deg)':'';
 }
 
 function renderMesPicker(){
@@ -854,7 +892,7 @@ function renderCard(card){
     ${tag?`<div class="tag-badge" style="background:${tag.bg};color:${tag.color}">${tag.label}</div>`:''}
     <div class="kcard-copy">${card.copy||'<span style="color:var(--text3);font-style:italic">sem copy</span>'}</div>
     ${isCorrecao&&card.observacao?`<div style="margin-top:8px;padding:7px 9px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(255,181,71,0.2);font-size:11px;color:var(--amber);line-height:1.4">✎ ${card.observacao}</div>`:''}
-    <div class="kcard-footer"><div class="kcard-date">${card.data_publicacao?formatDate(card.data_publicacao):'—'}</div>${card.responsavel?`<div class="kcard-resp">${card.responsavel}</div>`:''}</div>
+    <div class="kcard-footer"><div class="kcard-date">${card.data_publicacao?formatDate(card.data_publicacao):'—'}</div>${card.responsavel_producao?`<div class="kcard-resp" style="background:var(--accent-dim);color:var(--accent)">${card.responsavel_producao}</div>`:card.responsavel?`<div class="kcard-resp">${card.responsavel}</div>`:''}</div>
   </div>`;
 }
 
@@ -870,7 +908,7 @@ function openDetail(id){
       <div class="form-group"><label class="form-label">Data de publicação</label><input class="form-input" id="e-data" type="date" value="${card.data_publicacao||''}"/></div>
     </div>
     <div class="form-row" style="margin-bottom:16px">
-      <div class="form-group"><label class="form-label">Responsável</label><input class="form-input" id="e-resp" value="${card.responsavel||''}" placeholder="ex: Thainá" list="colaboradores-list"/></div>
+      <div class="form-group"><label class="form-label">Quem criou a demanda</label><input class="form-input" id="e-resp" value="${card.responsavel||''}" placeholder="ex: Thainá" list="colaboradores-list"/></div>
       <div class="form-group"><label class="form-label">URL da mídia</label><input class="form-input" id="e-midia" value="${card.midia_url||''}" placeholder="https://..."/></div>
     </div>
     <div class="form-group" style="margin-bottom:12px">
