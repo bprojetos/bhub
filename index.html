@@ -352,12 +352,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <button class="nav-item" id="nav-calendario" onclick="showScreen('calendario-geral')">
         <div class="nav-dot" style="background:var(--purple)"></div>Calendário geral
       </button>
-      <div class="nav-label" style="margin-top:8px">Clientes</div>
-      <div id="sidebar-clients"></div>
       <button class="nav-item" id="nav-notificacoes" onclick="showScreen('notificacoes')">
         <div class="nav-dot" style="background:var(--red)"></div>Notificações
         <span id="notif-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px">0</span>
       </button>
+      <div class="nav-label" style="margin-top:8px">Clientes</div>
+      <div id="sidebar-clients"></div>
       <div id="nav-admin-block" style="display:none">
         <div class="nav-label" style="margin-top:8px">Administração</div>
         <button class="nav-item" id="nav-clientes" onclick="showScreen('config-clientes')">
@@ -1730,6 +1730,131 @@ async function handleMultiUpload(inputId,labelId,previewId){
 }
 
 // UTILS
+// ---- GESTÃO ----
+function filtrarKanban(query){
+  const q=query.toLowerCase().trim();
+  document.querySelectorAll('.kanban-card').forEach(card=>{
+    card.style.display=!q||card.textContent.toLowerCase().includes(q)?'':'none';
+  });
+}
+
+async function duplicarConteudo(id){
+  const card=conteudos.find(x=>x.id===id);if(!card)return;
+  try{
+    await ins('conteudos',{cliente_id:card.cliente_id,mes:mesAtivo,tipo:card.tipo,copy:card.copy,midia_url:card.midia_url,midias_urls:card.midias_urls,responsavel:card.responsavel,responsavel_producao:card.responsavel_producao,status:'Planejamento',observacao:'',tag_demanda:card.tag_demanda,link_referencia:card.link_referencia});
+    showToast('Conteúdo duplicado!');closeModal('modal-card-detail');await renderKanban(clienteAtivo.id);
+  }catch(e){showToast('Erro ao duplicar','error');}
+}
+
+async function registrarHistorico(conteudoId,statusAnterior,statusNovo){
+  const autor=localStorage.getItem('bhub_nome')||'Equipe';
+  try{await ins('historico_status',{conteudo_id:conteudoId,status_anterior:statusAnterior,status_novo:statusNovo,autor});}catch(e){console.error(e);}
+}
+
+async function verHistorico(conteudoId){
+  if(!conteudoId)return;
+  try{
+    const hist=await getAll('historico_status',`?conteudo_id=eq.${conteudoId}&order=criado_em.asc`);
+    const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-hist-temp';
+    ov.innerHTML=`<div class="modal" style="max-width:480px"><div class="modal-header"><div class="modal-title">Histórico de status</div><button class="modal-close" onclick="document.getElementById('modal-hist-temp').remove()">×</button></div><div class="modal-body">${!hist.length?'<div class="empty-state"><div class="empty-title">Sem histórico ainda</div></div>':hist.map(h=>{const tempo=new Date(h.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:12px;color:var(--text2)">${h.status_anterior||'—'} → <strong style="color:var(--text)">${h.status_novo}</strong></div><div style="font-size:10px;color:var(--text3);margin-top:2px">${h.autor} · ${tempo}</div></div></div>`;}).join('')}</div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-hist-temp').remove()">Fechar</button></div></div>`;
+    document.body.appendChild(ov);
+  }catch(e){showToast('Erro','error');}
+}
+
+async function abrirTemplates(){
+  if(!clienteAtivo)return;
+  const cid=clienteAtivo.id;
+  let templates=[];
+  try{templates=await getAll('templates_planejamento',`?cliente_id=eq.${cid}&order=criado_em.desc`);}catch(e){}
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-templates-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:580px"><div class="modal-header"><div class="modal-title">Templates de planejamento</div><button class="modal-close" onclick="document.getElementById('modal-templates-temp').remove()">×</button></div><div class="modal-body">
+    <div class="form-group"><label class="form-label">Nome do template</label><input class="form-input" id="tpl-nome" placeholder="ex: Kit mensal padrão"/></div>
+    <div class="form-group"><label class="form-label">Itens — uma linha por conteúdo: Tipo,Responsável</label><textarea class="form-textarea" id="tpl-itens" placeholder="Reels,Thainá&#10;Stories,Thainá&#10;Carrossel,João&#10;Copy,Billie" style="min-height:120px;font-family:'DM Mono',monospace;font-size:12px"></textarea></div>
+    <div style="margin-bottom:16px"><button class="btn btn-primary" onclick="salvarTemplate('${cid}')">Salvar template</button></div>
+    ${templates.length?`<div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Templates salvos</div>${templates.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><div style="flex:1"><div style="font-size:13px;font-weight:500">${t.nome}</div><div style="font-size:11px;color:var(--text3)">${t.itens.length} itens</div></div><button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="aplicarTemplate('${t.id}')">Aplicar</button><button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="deletarTemplate('${t.id}')">×</button></div>`).join('')}`:'<div style="font-size:12px;color:var(--text3);font-style:italic">Nenhum template salvo ainda</div>'}
+  </div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-templates-temp').remove()">Fechar</button></div></div>`;
+  document.body.appendChild(ov);
+}
+
+async function salvarTemplate(cid){
+  const nome=document.getElementById('tpl-nome').value.trim();
+  const texto=document.getElementById('tpl-itens').value.trim();
+  if(!nome||!texto){showToast('Preencha nome e itens','error');return;}
+  const itens=texto.split('\n').filter(Boolean).map(linha=>{const [tipo,resp]=linha.split(',').map(x=>x.trim());return{tipo:tipo||'Reels',responsavel:resp||''};});
+  try{await ins('templates_planejamento',{cliente_id:cid,nome,itens});showToast('Template salvo!');document.getElementById('modal-templates-temp').remove();abrirTemplates();}
+  catch(e){showToast('Erro','error');}
+}
+
+async function aplicarTemplate(tplId){
+  try{
+    const tpls=await getAll('templates_planejamento',`?id=eq.${tplId}`);if(!tpls.length)return;const tpl=tpls[0];
+    for(const item of tpl.itens){await ins('conteudos',{cliente_id:clienteAtivo.id,mes:mesAtivo,tipo:item.tipo,responsavel:item.responsavel||'',status:'Planejamento'});}
+    showToast(`${tpl.itens.length} conteúdos criados!`);document.getElementById('modal-templates-temp').remove();await renderKanban(clienteAtivo.id);
+  }catch(e){showToast('Erro','error');}
+}
+
+async function deletarTemplate(id){
+  if(!confirm('Excluir template?'))return;
+  try{await del('templates_planejamento',`?id=eq.${id}`);document.getElementById('modal-templates-temp').remove();abrirTemplates();}
+  catch(e){showToast('Erro','error');}
+}
+
+// ---- NOTIFICAÇÕES ----
+let notifInterval=null;
+let lastNotifTime=null;
+let unreadCount=0;
+
+async function registrarNotif(texto,clienteId=null){
+  const nome=localStorage.getItem('bhub_nome')||'Equipe';
+  try{await ins('notificacoes',{texto:`${nome}: ${texto}`,autor:nome,...(clienteId?{cliente_id:clienteId}:{})});}catch(e){console.error(e);}
+}
+
+async function iniciarNotifRealtime(){
+  if(notifInterval)clearInterval(notifInterval);
+  lastNotifTime=new Date().toISOString();
+  notifInterval=setInterval(async()=>{
+    try{
+      const novas=await getAll('notificacoes',`?criado_em=gt.${lastNotifTime}&order=criado_em.asc`);
+      if(novas.length){lastNotifTime=novas[novas.length-1].criado_em;novas.forEach(n=>mostrarNotifPopup(n));unreadCount+=novas.length;atualizarBadge();}
+    }catch(e){}
+  },8000);
+}
+
+function mostrarNotifPopup(notif){
+  const popup=document.createElement('div');popup.className='notif-popup';
+  const cliente=notif.cliente_id?clientes.find(x=>x.id===notif.cliente_id):null;
+  popup.innerHTML=`<div class="notif-popup-icon">🔔</div><div class="notif-popup-content"><div class="notif-popup-title">${notif.texto}</div><div class="notif-popup-sub">${cliente?'Cliente: '+cliente.nome+' · ':''}agora</div></div><button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;margin-left:4px;line-height:1">×</button>`;
+  document.body.appendChild(popup);
+  setTimeout(()=>popup.remove(),6000);
+}
+
+function atualizarBadge(){
+  const badge=document.getElementById('notif-badge');if(!badge)return;
+  if(unreadCount>0){badge.style.display='inline';badge.textContent=unreadCount>9?'9+':unreadCount;}
+  else{badge.style.display='none';}
+}
+
+async function renderNotificacoes(){
+  unreadCount=0;atualizarBadge();
+  const list=document.getElementById('notif-list');if(!list)return;
+  try{
+    const notifs=await getAll('notificacoes','?order=criado_em.desc&limit=50');
+    if(!notifs.length){list.innerHTML='<div class="empty-state"><div class="empty-title">Nenhuma notificação</div><div class="empty-sub">As ações da equipe aparecerão aqui</div></div>';return;}
+    list.innerHTML=notifs.map(n=>{
+      const cliente=n.cliente_id?clientes.find(x=>x.id===n.cliente_id):null;
+      const tempo=new Date(n.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      return `<div class="notif-item"><div class="notif-dot"></div><div style="flex:1"><div class="notif-texto">${n.texto}</div><div class="notif-tempo">${cliente?'📌 '+cliente.nome+' · ':''}${tempo}</div></div></div>`;
+    }).join('');
+  }catch(e){list.innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';}
+}
+
+async function limparNotificacoes(){
+  if(!isAdmin){showToast('Apenas admins podem limpar','error');return;}
+  if(!confirm('Limpar todas as notificações?'))return;
+  try{await del('notificacoes','?id=neq.00000000-0000-0000-0000-000000000000');showToast('Notificações limpas');renderNotificacoes();}
+  catch(e){showToast('Erro','error');}
+}
+
 function slugify(s){return s.toLowerCase().replace(/ /g,'-').replace(/ç/g,'c').replace(/ã/g,'a').replace(/é/g,'e').replace(/ô/g,'o').replace(/í/g,'i').replace(/[^a-z0-9-]/g,'');}
 function getMesLabel(k){const[y,m]=k.split('-');return `${MESES[parseInt(m)-1]}/${y.slice(2)}`;}
 function getMesLabelFull(k){const[y,m]=k.split('-');return `${MESES[parseInt(m)-1]} ${y}`;}
