@@ -1854,6 +1854,31 @@ function navegarMesCk(dir){
   renderChecklist();
 }
 
+async function getEtapasCliente(clienteId){
+  // Try custom etapas first
+  const custom=await getAll('checklist_etapas',`?cliente_id=eq.${clienteId}&order=semana.asc,ordem.asc`);
+  if(custom.length){
+    // Group by semana
+    const bySemana={};
+    custom.forEach(e=>{
+      if(!bySemana[e.semana])bySemana[e.semana]=[];
+      bySemana[e.semana].push({etapa:e.etapa,responsavel:e.responsavel,id:e.id});
+    });
+    return bySemana;
+  }
+  // Fall back to defaults
+  const bySemana={};
+  SEMANAS_DEF.forEach(sem=>{
+    bySemana[sem.num]=[];
+    sem.etapas.forEach(et=>{
+      et.responsaveis.forEach(resp=>{
+        bySemana[sem.num].push({etapa:et.etapa,responsavel:resp,id:null});
+      });
+    });
+  });
+  return bySemana;
+}
+
 async function renderChecklist(){
   const list=document.getElementById('ck-list');
   const stats=document.getElementById('ck-stats');
@@ -1862,83 +1887,82 @@ async function renderChecklist(){
   const filtroSemana=document.getElementById('ck-filtro-semana')?.value||'';
 
   try{
-    // Load all checklist items for this month
-    const data=await getAll('checklist_semanas',`?mes=eq.${ckMes}&order=criado_em.asc`);
-    // Build lookup: clienteId+semana+etapa+responsavel -> status/obs
+    const [statusData]=await Promise.all([
+      getAll('checklist_semanas',`?mes=eq.${ckMes}`)
+    ]);
     const lookup={};
-    data.forEach(row=>{
+    statusData.forEach(row=>{
       const key=`${row.cliente_id}|${row.semana}|${row.etapa}|${row.responsavel}`;
       lookup[key]=row;
     });
 
-    // Stats
-    const total=data.length;
-    const concluidos=data.filter(x=>x.status==='Concluído').length;
-    const andamento=data.filter(x=>x.status==='Em andamento').length;
-    const atrasados=data.filter(x=>x.status==='Atrasado').length;
-    const pendentes=data.filter(x=>x.status==='Pendente').length;
+    const concluidos=statusData.filter(x=>x.status==='Concluído').length;
+    const andamento=statusData.filter(x=>x.status==='Em andamento').length;
+    const atrasados=statusData.filter(x=>x.status==='Atrasado').length;
+    const pendentes=statusData.filter(x=>x.status==='Pendente').length;
+    const total=statusData.length;
     stats.innerHTML=`
       <div class="stat-card accent"><div class="stat-label">Concluídos</div><div class="stat-value">${concluidos}</div><div class="stat-sub">de ${total} registrados</div></div>
       <div class="stat-card" style="border-color:rgba(90,180,255,0.2)"><div class="stat-label">Em andamento</div><div class="stat-value" style="color:var(--blue)">${andamento}</div></div>
       <div class="stat-card danger"><div class="stat-label">Atrasados</div><div class="stat-value">${atrasados}</div></div>
       <div class="stat-card warn"><div class="stat-label">Pendentes</div><div class="stat-value">${pendentes}</div></div>`;
 
-    // Filter semanas
-    const semanasFiltradas=filtroSemana?SEMANAS_DEF.filter(s=>s.num===parseInt(filtroSemana)):SEMANAS_DEF;
+    const semNums=filtroSemana?[parseInt(filtroSemana)]:[1,2,3,4];
+    const semInfo={1:{label:'Semana 1',dias:'dias 01–07'},2:{label:'Semana 2',dias:'dias 08–14'},3:{label:'Semana 3',dias:'dias 15–21 · prazo'},4:{label:'Semana 4',dias:'dias 22–28 · envio'}};
 
-    // Build HTML per cliente
     let html='';
     for(const cl of clientes){
-      // Calc progress for this client
+      const etapasBySemana=await getEtapasCliente(cl.id);
       let totalCl=0,conclCl=0;
-      semanasFiltradas.forEach(sem=>{
-        sem.etapas.forEach(et=>{
-          et.responsaveis.forEach(resp=>{
-            if(filtroColab&&resp!==filtroColab)return;
-            totalCl++;
-            const key=`${cl.id}|${sem.num}|${et.etapa}|${resp}`;
-            if(lookup[key]?.status==='Concluído')conclCl++;
-          });
+      semNums.forEach(sn=>{
+        (etapasBySemana[sn]||[]).forEach(et=>{
+          if(filtroColab&&et.responsavel!==filtroColab)return;
+          totalCl++;
+          const key=`${cl.id}|${sn}|${et.etapa}|${et.responsavel}`;
+          if(lookup[key]?.status==='Concluído')conclCl++;
         });
       });
-      if(totalCl===0)continue;
-      const pct=Math.round((conclCl/totalCl)*100);
+      const pct=totalCl?Math.round((conclCl/totalCl)*100):0;
 
       html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden">
-        <div style="padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;border-left:3px solid ${cl.cor}" onclick="toggleCkCliente('ck-${cl.id}',this)">
+        <div style="padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;border-left:3px solid ${cl.cor}" onclick="toggleCkCliente('ck-${cl.id}')">
           ${cl.logo_url?`<img src="${cl.logo_url}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;flex-shrink:0">`:`<div style="width:28px;height:28px;border-radius:6px;background:${cl.cor}22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${cl.cor};flex-shrink:0">${cl.nome.charAt(0)}</div>`}
           <div style="flex:1;min-width:0">
             <div style="font-size:14px;font-weight:600">${cl.nome}</div>
             <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-              <div style="flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${cl.cor};border-radius:2px;transition:width 0.3s"></div></div>
-              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap">${conclCl}/${totalCl} · ${pct}%</div>
+              <div style="flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${cl.cor};border-radius:2px"></div></div>
+              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${conclCl}/${totalCl} · ${pct}%</div>
             </div>
           </div>
-          <span style="color:var(--text3);font-size:12px;transition:transform 0.2s" id="ck-arrow-${cl.id}">▼</span>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();editarEtapasCliente('${cl.id}','${cl.nome}')">Editar etapas</button>
+          <span style="color:var(--text3);font-size:12px" id="ck-arrow-${cl.id}">▼</span>
         </div>
         <div id="ck-${cl.id}" style="display:none;border-top:1px solid var(--border)">
-          ${semanasFiltradas.map(sem=>`
-            <div style="padding:12px 18px;border-bottom:1px solid var(--border)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">${sem.label} — ${sem.dias}</div>
+          ${semNums.map(sn=>{
+            const info=semInfo[sn];
+            const etapas=(etapasBySemana[sn]||[]).filter(et=>!filtroColab||et.responsavel===filtroColab);
+            if(!etapas.length)return '';
+            return `<div style="padding:12px 18px;border-bottom:1px solid var(--border)">
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">${info.label} — ${info.dias}</div>
               <div style="display:flex;flex-direction:column;gap:6px">
-                ${sem.etapas.map(et=>et.responsaveis.filter(r=>!filtroColab||r===filtroColab).map(resp=>{
-                  const key=`${cl.id}|${sem.num}|${et.etapa}|${resp}`;
+                ${etapas.map(et=>{
+                  const key=`${cl.id}|${sn}|${et.etapa}|${et.responsavel}`;
                   const row=lookup[key];
                   const status=row?.status||'Pendente';
-                  const obs=row?.obs||'';
                   const stStyle=STATUS_CK_STYLE[status]||STATUS_CK_STYLE['Pendente'];
                   return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:7px">
                     <div style="flex:1;min-width:0">
                       <div style="font-size:12px;font-weight:500">${et.etapa}</div>
-                      <div style="font-size:10px;color:var(--text3);margin-top:1px">${resp}</div>
+                      <div style="font-size:10px;color:var(--text3);margin-top:1px">${et.responsavel}</div>
                     </div>
-                    <select onchange="atualizarCkStatus('${cl.id}','${sem.num}','${et.etapa.replace(/'/g,"\'")}','${resp}',this.value)" style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${stStyle}">
+                    <select onchange="atualizarCkStatus('${cl.id}','${sn}','${et.etapa.replace(/'/g,"\'")}','${et.responsavel}',this.value)" style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${stStyle}">
                       ${STATUS_CK.map(s=>`<option value="${s}" ${s===status?'selected':''}>${s}</option>`).join('')}
                     </select>
                   </div>`;
-                }).join('')).join('')}
+                }).join('')}
               </div>
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
         </div>
       </div>`;
     }
@@ -1946,7 +1970,111 @@ async function renderChecklist(){
   }catch(e){list.innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';console.error(e);}
 }
 
-function toggleCkCliente(id,header){
+async function editarEtapasCliente(clienteId, clienteNome){
+  // Load existing custom etapas or defaults
+  let etapas=await getAll('checklist_etapas',`?cliente_id=eq.${clienteId}&order=semana.asc,ordem.asc`);
+  if(!etapas.length){
+    // Seed from defaults
+    let ordem=0;
+    for(const sem of SEMANAS_DEF){
+      for(const et of sem.etapas){
+        for(const resp of et.responsaveis){
+          etapas.push({id:null,semana:sem.num,etapa:et.etapa,responsavel:resp,ordem:ordem++});
+        }
+      }
+    }
+  }
+
+  const semNums=[1,2,3,4];
+  const semInfo={1:'Semana 1 (01–07)',2:'Semana 2 (08–14)',3:'Semana 3 (15–21)',4:'Semana 4 (22–28)'};
+
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-etapas-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:620px;max-height:85vh">
+    <div class="modal-header">
+      <div><div class="modal-title">Editar etapas — ${clienteNome}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Etapas salvas valem para este cliente</div></div>
+      <button class="modal-close" onclick="document.getElementById('modal-etapas-temp').remove()">×</button>
+    </div>
+    <div class="modal-body" style="max-height:60vh;overflow-y:auto">
+      ${semNums.map(sn=>{
+        const semEtapas=etapas.filter(e=>e.semana===sn);
+        return `<div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">${semInfo[sn]}</div>
+          <div id="etapas-sem-${clienteId}-${sn}">
+            ${semEtapas.map((et,i)=>`
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px" id="etapa-row-${clienteId}-${sn}-${i}">
+                <input class="form-input" style="flex:2;font-size:12px;padding:6px 10px" placeholder="Nome da etapa" value="${et.etapa}" onchange="ckEtapaChange('${clienteId}',${sn},${i},'etapa',this.value)"/>
+                <input class="form-input" style="flex:1;font-size:12px;padding:6px 10px" placeholder="Responsável" value="${et.responsavel}" onchange="ckEtapaChange('${clienteId}',${sn},${i},'responsavel',this.value)"/>
+                <button onclick="removerEtapaLocal('${clienteId}',${sn},${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0">×</button>
+              </div>`).join('')}
+          </div>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;margin-top:4px" onclick="adicionarEtapaLocal('${clienteId}',${sn})">+ Adicionar etapa</button>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-etapas-temp').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEtapasCliente('${clienteId}')">Salvar etapas</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  // Store temp etapas
+  window._ckEtapasTemp={clienteId, etapas:JSON.parse(JSON.stringify(etapas))};
+}
+
+function ckEtapaChange(clienteId,semana,idx,campo,valor){
+  if(!window._ckEtapasTemp)return;
+  const etapas=window._ckEtapasTemp.etapas.filter(e=>e.semana===semana);
+  const all=window._ckEtapasTemp.etapas;
+  const semEtapas=all.filter(e=>e.semana===semana);
+  if(semEtapas[idx])semEtapas[idx][campo]=valor;
+}
+
+function adicionarEtapaLocal(clienteId,semana){
+  if(!window._ckEtapasTemp)return;
+  window._ckEtapasTemp.etapas.push({id:null,semana,etapa:'',responsavel:'',ordem:999});
+  const container=document.getElementById(`etapas-sem-${clienteId}-${semana}`);
+  if(!container)return;
+  const semEtapas=window._ckEtapasTemp.etapas.filter(e=>e.semana===semana);
+  const i=semEtapas.length-1;
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:6px';
+  div.id=`etapa-row-${clienteId}-${semana}-${i}`;
+  div.innerHTML=`<input class="form-input" style="flex:2;font-size:12px;padding:6px 10px" placeholder="Nome da etapa" value="" onchange="ckEtapaChange('${clienteId}',${semana},${i},'etapa',this.value)"/>
+    <input class="form-input" style="flex:1;font-size:12px;padding:6px 10px" placeholder="Responsável" value="" onchange="ckEtapaChange('${clienteId}',${semana},${i},'responsavel',this.value)"/>
+    <button onclick="removerEtapaLocal('${clienteId}',${semana},${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0">×</button>`;
+  container.appendChild(div);
+}
+
+function removerEtapaLocal(clienteId,semana,idx){
+  if(!window._ckEtapasTemp)return;
+  const semEtapas=window._ckEtapasTemp.etapas.filter(e=>e.semana===semana);
+  if(semEtapas[idx]){
+    const globalIdx=window._ckEtapasTemp.etapas.indexOf(semEtapas[idx]);
+    window._ckEtapasTemp.etapas.splice(globalIdx,1);
+  }
+  const row=document.getElementById(`etapa-row-${clienteId}-${semana}-${idx}`);
+  if(row)row.remove();
+}
+
+async function salvarEtapasCliente(clienteId){
+  if(!window._ckEtapasTemp)return;
+  const etapas=window._ckEtapasTemp.etapas.filter(e=>e.etapa.trim());
+  try{
+    // Delete all existing custom etapas for this client
+    await del('checklist_etapas',`?cliente_id=eq.${clienteId}`);
+    // Insert new ones
+    let ordem=0;
+    for(const et of etapas){
+      await ins('checklist_etapas',{cliente_id:clienteId,semana:et.semana,etapa:et.etapa.trim(),responsavel:et.responsavel.trim()||'—',ordem:ordem++});
+    }
+    showToast('Etapas salvas!');
+    document.getElementById('modal-etapas-temp').remove();
+    window._ckEtapasTemp=null;
+    renderChecklist();
+  }catch(e){showToast('Erro ao salvar','error');console.error(e);}
+}
+
+function toggleCkCliente(id){
   const body=document.getElementById(id);
   const clienteId=id.replace('ck-','');
   const arrow=document.getElementById('ck-arrow-'+clienteId);
