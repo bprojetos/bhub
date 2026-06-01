@@ -352,6 +352,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <button class="nav-item" id="nav-calendario" onclick="showScreen('calendario-geral')">
         <div class="nav-dot" style="background:var(--purple)"></div>Calendário geral
       </button>
+      <button class="nav-item" id="nav-checklist" onclick="showScreen('checklist')">
+        <div class="nav-dot" style="background:var(--teal)"></div>Checklist semanal
+      </button>
       <button class="nav-item" id="nav-notificacoes" onclick="showScreen('notificacoes')">
         <div class="nav-dot" style="background:var(--red)"></div>Notificações
         <span id="notif-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px">0</span>
@@ -446,6 +449,42 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           </div>
         </div>
         <div id="cal-geral-grid"></div>
+      </div>
+
+      <!-- CHECKLIST SEMANAL -->
+      <div class="screen" id="screen-checklist">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:22px;font-weight:600;letter-spacing:-0.5px">Checklist semanal</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px" id="ck-sub"></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="ck-filtro-colab" class="form-select" style="width:160px;font-size:12px" onchange="renderChecklist()">
+              <option value="">Todos os colaboradores</option>
+              <option>Julio</option>
+              <option>Gisele</option>
+              <option>Bruna</option>
+              <option>May</option>
+              <option>Gica</option>
+            </select>
+            <select id="ck-filtro-semana" class="form-select" style="width:140px;font-size:12px" onchange="renderChecklist()">
+              <option value="">Todas as semanas</option>
+              <option value="1">Semana 1 (01–07)</option>
+              <option value="2">Semana 2 (08–14)</option>
+              <option value="3">Semana 3 (15–21)</option>
+              <option value="4">Semana 4 (22–28)</option>
+            </select>
+            <div style="display:flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:3px">
+              <button class="month-tab" onclick="navegarMesCk(-1)">‹</button>
+              <div id="ck-mes-label" style="font-size:13px;font-weight:500;padding:5px 10px;min-width:80px;text-align:center"></div>
+              <button class="month-tab" onclick="navegarMesCk(1)">›</button>
+            </div>
+          </div>
+        </div>
+        <!-- Stats -->
+        <div id="ck-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px"></div>
+        <!-- List -->
+        <div id="ck-list"></div>
       </div>
 
       <!-- NOTIFICAÇÕES -->
@@ -736,6 +775,10 @@ async function showScreen(id,cid){
     document.getElementById('nav-calendario').classList.add('active');
     if(!calGeralMes){const n=new Date();calGeralMes=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
     renderCalendarioGeral();
+  } else if(id==='checklist'){
+    document.getElementById('topbar-title').textContent='Checklist semanal';
+    document.getElementById('nav-checklist').classList.add('active');
+    initChecklist();
   } else if(id==='notificacoes'){
     document.getElementById('topbar-title').textContent='Notificações';
     document.getElementById('nav-notificacoes').classList.add('active');
@@ -1730,6 +1773,212 @@ async function handleMultiUpload(inputId,labelId,previewId){
 }
 
 // UTILS
+
+// ---- CHECKLIST SEMANAL ----
+const SEMANAS_DEF = [
+  {
+    num: 1, label: 'Semana 1', dias: 'dias 01–07',
+    etapas: [
+      {etapa:'Tema e estratégia', responsaveis:['Julio','Gisele']},
+      {etapa:'Revisão dos textos', responsaveis:['Bruna']},
+      {etapa:'Revisão das legendas', responsaveis:['Bruna']},
+      {etapa:'Alteração do planejamento', responsaveis:['May']},
+      {etapa:'Organização para o envio', responsaveis:['May']},
+      {etapa:'Revisão | Roteiro e Planejamento', responsaveis:['Gisele']},
+      {etapa:'Solicitação de fotos/materiais ao cliente', responsaveis:['May']},
+      {etapa:'Produção das artes', responsaveis:['Gica']},
+    ]
+  },
+  {
+    num: 2, label: 'Semana 2', dias: 'dias 08–14',
+    etapas: [
+      {etapa:'Solicitação de fotos', responsaveis:['May']},
+      {etapa:'Produção das artes', responsaveis:['Gica']},
+      {etapa:'Estudo', responsaveis:['Julio','Gisele']},
+      {etapa:'Tema e estratégia do próximo mês', responsaveis:['Julio','Gisele']},
+      {etapa:'Aprovar tema e estratégia', responsaveis:['Bruna']},
+      {etapa:'Aprovar estudo', responsaveis:['Bruna']},
+    ]
+  },
+  {
+    num: 3, label: 'Semana 3', dias: 'dias 15–21 · prazo de entrega',
+    etapas: [
+      {etapa:'Produção das artes', responsaveis:['Gica']},
+      {etapa:'Envio no Workflow', responsaveis:['May']},
+      {etapa:'Desenvolvimento dos textos', responsaveis:['Gisele','Julio']},
+      {etapa:'Revisão gramatical', responsaveis:['Bruna']},
+      {etapa:'Revisão conceitual', responsaveis:['Julio']},
+      {etapa:'Aprovar estudo do próximo mês', responsaveis:['Bruna']},
+    ]
+  },
+  {
+    num: 4, label: 'Semana 4', dias: 'dias 22–28 · envio ao cliente',
+    etapas: [
+      {etapa:'Entrega dos conteúdos', responsaveis:['May']},
+      {etapa:'Alteração interna', responsaveis:['Gisele','Bruna']},
+      {etapa:'Organização para o envio', responsaveis:['May']},
+      {etapa:'Alteração cliente', responsaveis:['Gisele','Bruna']},
+      {etapa:'Montagem do planejamento', responsaveis:['Julio','Gisele']},
+      {etapa:'Desenvolvimento dos textos', responsaveis:['Gisele','Julio']},
+      {etapa:'Revisão conceitual', responsaveis:['Julio']},
+      {etapa:'Entrega do planejamento', responsaveis:['May']},
+    ]
+  }
+];
+
+const STATUS_CK = ['Pendente','Em andamento','Concluído','Atrasado'];
+const STATUS_CK_STYLE = {
+  'Pendente':'background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,181,71,0.3)',
+  'Em andamento':'background:var(--blue-dim);color:var(--blue);border:1px solid rgba(90,180,255,0.3)',
+  'Concluído':'background:var(--teal-dim);color:var(--teal);border:1px solid rgba(52,211,153,0.3)',
+  'Atrasado':'background:var(--red-dim);color:var(--red);border:1px solid rgba(255,90,90,0.3)',
+};
+
+let ckMes = null;
+let ckCache = {};
+
+function initChecklist(){
+  if(!ckMes){const n=new Date();ckMes=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+  document.getElementById('ck-mes-label').textContent=getMesLabelFull(ckMes);
+  document.getElementById('ck-sub').textContent=`Ciclo mensal · ${getMesLabelFull(ckMes)}`;
+  renderChecklist();
+}
+
+function navegarMesCk(dir){
+  const [y,m]=ckMes.split('-').map(Number);
+  const d=new Date(y,m-1+dir,1);
+  ckMes=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('ck-mes-label').textContent=getMesLabelFull(ckMes);
+  document.getElementById('ck-sub').textContent=`Ciclo mensal · ${getMesLabelFull(ckMes)}`;
+  ckCache={};
+  renderChecklist();
+}
+
+async function renderChecklist(){
+  const list=document.getElementById('ck-list');
+  const stats=document.getElementById('ck-stats');
+  list.innerHTML='<div class="loading"><div class="spinner"></div> Carregando...</div>';
+  const filtroColab=document.getElementById('ck-filtro-colab')?.value||'';
+  const filtroSemana=document.getElementById('ck-filtro-semana')?.value||'';
+
+  try{
+    // Load all checklist items for this month
+    const data=await getAll('checklist_semanas',`?mes=eq.${ckMes}&order=criado_em.asc`);
+    // Build lookup: clienteId+semana+etapa+responsavel -> status/obs
+    const lookup={};
+    data.forEach(row=>{
+      const key=`${row.cliente_id}|${row.semana}|${row.etapa}|${row.responsavel}`;
+      lookup[key]=row;
+    });
+
+    // Stats
+    const total=data.length;
+    const concluidos=data.filter(x=>x.status==='Concluído').length;
+    const andamento=data.filter(x=>x.status==='Em andamento').length;
+    const atrasados=data.filter(x=>x.status==='Atrasado').length;
+    const pendentes=data.filter(x=>x.status==='Pendente').length;
+    stats.innerHTML=`
+      <div class="stat-card accent"><div class="stat-label">Concluídos</div><div class="stat-value">${concluidos}</div><div class="stat-sub">de ${total} registrados</div></div>
+      <div class="stat-card" style="border-color:rgba(90,180,255,0.2)"><div class="stat-label">Em andamento</div><div class="stat-value" style="color:var(--blue)">${andamento}</div></div>
+      <div class="stat-card danger"><div class="stat-label">Atrasados</div><div class="stat-value">${atrasados}</div></div>
+      <div class="stat-card warn"><div class="stat-label">Pendentes</div><div class="stat-value">${pendentes}</div></div>`;
+
+    // Filter semanas
+    const semanasFiltradas=filtroSemana?SEMANAS_DEF.filter(s=>s.num===parseInt(filtroSemana)):SEMANAS_DEF;
+
+    // Build HTML per cliente
+    let html='';
+    for(const cl of clientes){
+      // Calc progress for this client
+      let totalCl=0,conclCl=0;
+      semanasFiltradas.forEach(sem=>{
+        sem.etapas.forEach(et=>{
+          et.responsaveis.forEach(resp=>{
+            if(filtroColab&&resp!==filtroColab)return;
+            totalCl++;
+            const key=`${cl.id}|${sem.num}|${et.etapa}|${resp}`;
+            if(lookup[key]?.status==='Concluído')conclCl++;
+          });
+        });
+      });
+      if(totalCl===0)continue;
+      const pct=Math.round((conclCl/totalCl)*100);
+
+      html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden">
+        <div style="padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;border-left:3px solid ${cl.cor}" onclick="toggleCkCliente('ck-${cl.id}',this)">
+          ${cl.logo_url?`<img src="${cl.logo_url}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;flex-shrink:0">`:`<div style="width:28px;height:28px;border-radius:6px;background:${cl.cor}22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${cl.cor};flex-shrink:0">${cl.nome.charAt(0)}</div>`}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600">${cl.nome}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+              <div style="flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${cl.cor};border-radius:2px;transition:width 0.3s"></div></div>
+              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap">${conclCl}/${totalCl} · ${pct}%</div>
+            </div>
+          </div>
+          <span style="color:var(--text3);font-size:12px;transition:transform 0.2s" id="ck-arrow-${cl.id}">▼</span>
+        </div>
+        <div id="ck-${cl.id}" style="display:none;border-top:1px solid var(--border)">
+          ${semanasFiltradas.map(sem=>`
+            <div style="padding:12px 18px;border-bottom:1px solid var(--border)">
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">${sem.label} — ${sem.dias}</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                ${sem.etapas.map(et=>et.responsaveis.filter(r=>!filtroColab||r===filtroColab).map(resp=>{
+                  const key=`${cl.id}|${sem.num}|${et.etapa}|${resp}`;
+                  const row=lookup[key];
+                  const status=row?.status||'Pendente';
+                  const obs=row?.obs||'';
+                  const stStyle=STATUS_CK_STYLE[status]||STATUS_CK_STYLE['Pendente'];
+                  return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:7px">
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:12px;font-weight:500">${et.etapa}</div>
+                      <div style="font-size:10px;color:var(--text3);margin-top:1px">${resp}</div>
+                    </div>
+                    <select onchange="atualizarCkStatus('${cl.id}','${sem.num}','${et.etapa.replace(/'/g,"\'")}','${resp}',this.value)" style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${stStyle}">
+                      ${STATUS_CK.map(s=>`<option value="${s}" ${s===status?'selected':''}>${s}</option>`).join('')}
+                    </select>
+                  </div>`;
+                }).join('')).join('')}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }
+    list.innerHTML=html||'<div class="empty-state"><div class="empty-title">Nenhum cliente cadastrado</div></div>';
+  }catch(e){list.innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';console.error(e);}
+}
+
+function toggleCkCliente(id,header){
+  const body=document.getElementById(id);
+  const clienteId=id.replace('ck-','');
+  const arrow=document.getElementById('ck-arrow-'+clienteId);
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  if(arrow)arrow.style.transform=open?'rotate(180deg)':'';
+}
+
+async function atualizarCkStatus(clienteId,semana,etapa,responsavel,status){
+  try{
+    // Try to find existing row
+    const ex=await getAll('checklist_semanas',`?cliente_id=eq.${clienteId}&mes=eq.${ckMes}&semana=eq.${semana}&responsavel=eq.${responsavel}&etapa=eq.${etapa}`);
+    if(ex.length){
+      await upd('checklist_semanas',{status},`?id=eq.${ex[0].id}`);
+    } else {
+      await ins('checklist_semanas',{cliente_id:clienteId,mes:ckMes,semana:parseInt(semana),etapa,responsavel,status});
+    }
+    // Update stats without full reload
+    const allData=await getAll('checklist_semanas',`?mes=eq.${ckMes}`);
+    const concluidos=allData.filter(x=>x.status==='Concluído').length;
+    const andamento=allData.filter(x=>x.status==='Em andamento').length;
+    const atrasados=allData.filter(x=>x.status==='Atrasado').length;
+    const pendentes=allData.filter(x=>x.status==='Pendente').length;
+    const stats=document.getElementById('ck-stats');
+    if(stats)stats.innerHTML=`
+      <div class="stat-card accent"><div class="stat-label">Concluídos</div><div class="stat-value">${concluidos}</div><div class="stat-sub">de ${allData.length} registrados</div></div>
+      <div class="stat-card" style="border-color:rgba(90,180,255,0.2)"><div class="stat-label">Em andamento</div><div class="stat-value" style="color:var(--blue)">${andamento}</div></div>
+      <div class="stat-card danger"><div class="stat-label">Atrasados</div><div class="stat-value">${atrasados}</div></div>
+      <div class="stat-card warn"><div class="stat-label">Pendentes</div><div class="stat-value">${pendentes}</div></div>`;
+  }catch(e){showToast('Erro ao salvar','error');console.error(e);}
+}
+
 // ---- GESTÃO ----
 function filtrarKanban(query){
   const q=query.toLowerCase().trim();
