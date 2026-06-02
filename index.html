@@ -2374,11 +2374,12 @@ async function renderChecklist(){
       lookup[key]=row;
     });
 
+    // Only count tasks that have been explicitly registered in the DB
     const concluidos=statusData.filter(x=>x.status==='Concluído').length;
     const andamento=statusData.filter(x=>x.status==='Em andamento').length;
     const atrasados=statusData.filter(x=>x.status==='Atrasado').length;
     const pendentes=statusData.filter(x=>x.status==='Pendente').length;
-    const total=statusData.length;
+    const total=concluidos+andamento+atrasados+pendentes;
     // Determine current week (1-4) based on day of month
     const hoje=new Date();
     const diaDoMes=hoje.getDate();
