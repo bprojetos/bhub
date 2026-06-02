@@ -1786,6 +1786,192 @@ async function handleMultiUpload(inputId,labelId,previewId){
 // UTILS
 
 
+// ---- PERFORMANCE ----
+const PLATAFORMAS=['Meta Ads','Google Ads','LinkedIn Ads','TikTok Ads'];
+const PLAT_COLORS={'Meta Ads':'#1877f2','Google Ads':'#ea4335','LinkedIn Ads':'#0a66c2','TikTok Ads':'#010101'};
+
+async function renderPerformance(cid){
+  const view=document.getElementById('cliente-view');
+  view.style.cssText='';
+  view.innerHTML='<div class="loading"><div class="spinner"></div> Carregando...</div>';
+  try{
+    const campanhas=await getAll('campanhas',`?cliente_id=eq.${cid}&order=criado_em.desc`);
+    let html=`<div style="max-width:900px"><div class="section-header"><div class="section-title">Campanhas</div><div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="exportarRelatorio('${cid}')">📄 Exportar relatório</button><button class="btn btn-primary" onclick="openModalCampanha()">+ Nova campanha</button></div></div>`;
+    if(!campanhas.length){html+='<div class="empty-state"><div class="empty-title">Nenhuma campanha</div><div class="empty-sub">Clique em Nova campanha para começar</div></div>';}
+    else{
+      for(const camp of campanhas){
+        const criativos=await getAll('criativos',`?campanha_id=eq.${camp.id}&order=criado_em.desc`);
+        const resumos=await getAll('resumos_semanais',`?campanha_id=eq.${camp.id}&order=semana.desc`);
+        const pc=PLAT_COLORS[camp.plataforma]||'#888';
+        const stCls={'Ativa':'status-ativa','Pausada':'status-pausada','Encerrada':'status-encerrada'}[camp.status]||'';
+        html+=`<div class="perf-card"><div class="perf-card-header" onclick="togglePerfCard('pc-${camp.id}')">
+          <div style="display:flex;align-items:center;gap:10px;flex:1">
+            <div class="plataforma-badge" style="background:${pc}22;color:${pc}">${camp.plataforma}</div>
+            <div style="font-weight:500">${camp.nome}</div>
+            <span class="status-pill ${stCls}">${camp.status}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            ${camp.verba?`<span style="font-size:12px;color:var(--text2)">R$ ${Number(camp.verba).toLocaleString('pt-BR')}</span>`:''}
+            ${camp.objetivo?`<span style="font-size:11px;color:var(--text3)">${camp.objetivo}</span>`:''}
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();editarCampanha('${camp.id}')">Editar</button>
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();deletarCampanha('${camp.id}','${camp.nome}')">×</button>
+          </div>
+        </div>
+        <div class="perf-card-body" id="pc-${camp.id}">
+          <div style="margin-bottom:16px">
+            <div class="section-header" style="margin-bottom:10px">
+              <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px">Criativos e Copys</div>
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModalCriativo('${camp.id}')">+ Adicionar</button>
+            </div>
+            ${criativos.length?criativos.map(cr=>`<div class="criativo-item"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                  <span style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--bg4);color:var(--text2)">${cr.tipo}</span>
+                  <span style="font-size:10px;color:${cr.status==='Ativo'?'var(--teal)':'var(--text3)'}">${cr.status}</span>
+                </div>
+                ${cr.descricao?`<div style="font-size:12px;font-weight:500;margin-bottom:4px">${cr.descricao}</div>`:''}
+                ${cr.copy?`<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:6px">${cr.copy}</div>`:''}
+                ${cr.midia_url?(cr.midia_url.match(/\.(mp4|mov|webm|avi)/i)?`<video src="${cr.midia_url}" controls style="width:100%;max-height:180px;border-radius:8px;margin-top:6px;display:block;background:#000"></video>`:`<img src="${cr.midia_url}" style="width:100%;max-height:180px;object-fit:contain;border-radius:8px;margin-top:6px;display:block;background:var(--bg4)" onerror="this.remove()"/>`):''}
+              </div>
+              <div style="display:flex;gap:4px">
+                <button onclick="editarCriativo('${cr.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:11px;padding:3px 8px">Editar</button>
+                <button onclick="deletarCriativo('${cr.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px">×</button>
+              </div>
+            </div></div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum criativo</div>'}
+          </div>
+          <div>
+            <div class="section-header" style="margin-bottom:10px">
+              <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px">Resumos Semanais</div>
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModalResumo('${camp.id}')">+ Adicionar semana</button>
+            </div>
+            ${resumos.length?resumos.map(r=>`<div class="resumo-semana"><div class="resumo-semana-header"><div style="font-size:12px;font-weight:600">Semana de ${r.semana}</div><button onclick="deletarResumo('${r.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px">×</button></div>
+              <div class="metric-grid">
+                <div class="metric-box"><div class="metric-label">Impressões</div><div class="metric-value">${r.impressoes?Number(r.impressoes).toLocaleString('pt-BR'):'—'}</div></div>
+                <div class="metric-box"><div class="metric-label">Cliques</div><div class="metric-value">${r.cliques?Number(r.cliques).toLocaleString('pt-BR'):'—'}</div></div>
+                <div class="metric-box"><div class="metric-label">Conversões</div><div class="metric-value">${r.conversoes||'—'}</div></div>
+                <div class="metric-box"><div class="metric-label">ROAS</div><div class="metric-value">${r.roas?Number(r.roas).toFixed(2)+'x':'—'}</div></div>
+                <div class="metric-box"><div class="metric-label">Verba gasta</div><div class="metric-value">${r.verba_gasta?'R$'+Number(r.verba_gasta).toLocaleString('pt-BR'):'—'}</div></div>
+              </div>
+              ${r.resumo?`<div style="font-size:12px;color:var(--text2);line-height:1.6;padding:8px;background:var(--bg4);border-radius:6px;margin-bottom:6px">${r.resumo}</div>`:''}
+              ${r.proximos_passos?`<div style="font-size:12px;color:var(--teal);line-height:1.6;padding:8px;background:var(--teal-dim);border-radius:6px;margin-bottom:6px">📋 <strong>Próximos passos:</strong> ${r.proximos_passos}</div>`:''}
+              ${r.alertas?`<div style="font-size:12px;color:var(--amber);line-height:1.6;padding:8px;background:var(--amber-dim);border-radius:6px">⚠️ <strong>Alertas:</strong> ${r.alertas}</div>`:''}
+            </div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum resumo</div>'}
+          </div>
+        </div></div>`;
+      }
+    }
+    html+='</div>';
+    view.innerHTML=html;
+  }catch(e){view.innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';console.error(e);}
+}
+
+function togglePerfCard(id){const b=document.getElementById(id);if(b)b.classList.toggle('open');}
+
+let campanhaEditId=null;
+function openModalCampanha(campId){
+  campanhaEditId=campId||null;
+  const isEdit=!!campId;
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-campanha-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:560px"><div class="modal-header"><div class="modal-title">${isEdit?'Editar campanha':'Nova campanha'}</div><button class="modal-close" onclick="document.getElementById('modal-campanha-temp').remove()">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="camp-nome" placeholder="ex: Campanha Awareness Maio"/></div><div class="form-group"><label class="form-label">Plataforma</label><select class="form-select" id="camp-plat">${PLATAFORMAS.map(p=>`<option>${p}</option>`).join('')}</select></div></div><div class="form-row"><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="camp-status"><option>Ativa</option><option>Pausada</option><option>Encerrada</option></select></div><div class="form-group"><label class="form-label">Verba (R$)</label><input class="form-input" id="camp-verba" type="number" placeholder="0.00"/></div></div><div class="form-group"><label class="form-label">Objetivo</label><input class="form-input" id="camp-objetivo" placeholder="ex: Geração de leads, Awareness..."/></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-campanha-temp').remove()">Cancelar</button><button class="btn btn-primary" onclick="salvarCampanha()">Salvar</button></div></div>`;
+  document.body.appendChild(ov);
+}
+
+async function editarCampanha(id){
+  try{
+    const camps=await getAll('campanhas',`?id=eq.${id}`);if(!camps.length)return;const camp=camps[0];
+    openModalCampanha(id);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      document.getElementById('camp-nome').value=camp.nome||'';
+      document.getElementById('camp-plat').value=camp.plataforma||'Meta Ads';
+      document.getElementById('camp-status').value=camp.status||'Ativa';
+      document.getElementById('camp-verba').value=camp.verba||'';
+      document.getElementById('camp-objetivo').value=camp.objetivo||'';
+    }));
+  }catch(e){showToast('Erro','error');}
+}
+
+async function salvarCampanha(){
+  const nome=document.getElementById('camp-nome').value.trim();
+  if(!nome){showToast('Informe o nome','error');return;}
+  const dados={nome,plataforma:document.getElementById('camp-plat').value,status:document.getElementById('camp-status').value,verba:document.getElementById('camp-verba').value||null,objetivo:document.getElementById('camp-objetivo').value};
+  try{
+    if(campanhaEditId){await upd('campanhas',dados,`?id=eq.${campanhaEditId}`);}
+    else{await ins('campanhas',{...dados,cliente_id:clienteAtivo.id});}
+    showToast(campanhaEditId?'Atualizada!':'Criada!');document.getElementById('modal-campanha-temp')?.remove();renderPerformance(clienteAtivo.id);
+  }catch(e){showToast('Erro','error');}
+}
+
+async function deletarCampanha(id,nome){if(!confirm(`Excluir "${nome}"?`))return;try{await del('campanhas',`?id=eq.${id}`);showToast('Excluída');renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+
+let criatCampId=null;
+function openModalCriativo(campId){
+  criatCampId=campId;
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-criativo-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:560px"><div class="modal-header"><div class="modal-title">Novo criativo / copy</div><button class="modal-close" onclick="document.getElementById('modal-criativo-temp').remove()">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="cri-tipo"><option>Criativo</option><option>Copy</option><option>Criativo + Copy</option><option>Vídeo</option><option>Carrossel</option></select></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="cri-status"><option>Ativo</option><option>Pausado</option><option>Encerrado</option></select></div></div><div class="form-group"><label class="form-label">Descrição</label><input class="form-input" id="cri-desc" placeholder="ex: Stories animado - oferta de maio"/></div><div class="form-group"><label class="form-label">Copy</label><textarea class="form-textarea" id="cri-copy" placeholder="Cole aqui a copy..."></textarea></div><div class="form-group"><label class="form-label">Mídia</label><label style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:7px;cursor:pointer;font-size:12px;color:var(--text2);margin-bottom:8px"><span>📎</span><span id="cri-upload-label">Clique para fazer upload</span><input type="file" id="cri-upload" accept="image/*,video/*" style="display:none" onchange="handleCriativoUpload()"/></label><input class="form-input" id="cri-midia" placeholder="Ou cole uma URL..."/><div id="cri-preview" style="margin-top:8px"></div></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-criativo-temp').remove()">Cancelar</button><button class="btn btn-primary" onclick="salvarCriativo()">Salvar</button></div></div>`;
+  document.body.appendChild(ov);
+}
+
+async function handleCriativoUpload(){
+  const file=document.getElementById('cri-upload').files[0];if(!file)return;
+  const label=document.getElementById('cri-upload-label');label.textContent='Enviando...';
+  try{const url=await uploadFile(file);document.getElementById('cri-midia').value=url;label.textContent='✓ '+file.name;const isVid=file.type.startsWith('video');document.getElementById('cri-preview').innerHTML=isVid?`<video src="${url}" controls style="width:100%;max-height:200px;border-radius:8px;display:block;background:#000"></video>`:`<img src="${url}" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;display:block;background:var(--bg3)"/>`;}
+  catch(e){label.textContent='Erro no upload';showToast('Erro no upload','error');}
+}
+
+async function salvarCriativo(){try{await ins('criativos',{campanha_id:criatCampId,tipo:document.getElementById('cri-tipo').value,status:document.getElementById('cri-status').value,descricao:document.getElementById('cri-desc').value,copy:document.getElementById('cri-copy').value,midia_url:document.getElementById('cri-midia').value});showToast('Salvo!');document.getElementById('modal-criativo-temp')?.remove();renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+
+async function editarCriativo(id){
+  try{
+    const crs=await getAll('criativos',`?id=eq.${id}`);if(!crs.length)return;const cr=crs[0];
+    criatCampId=cr.campanha_id;
+    const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-criativo-temp';
+    ov.innerHTML=`<div class="modal" style="max-width:560px"><div class="modal-header"><div class="modal-title">Editar criativo</div><button class="modal-close" onclick="document.getElementById('modal-criativo-temp').remove()">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="cri-tipo"><option>Criativo</option><option>Copy</option><option>Criativo + Copy</option><option>Vídeo</option><option>Carrossel</option></select></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="cri-status"><option>Ativo</option><option>Pausado</option><option>Encerrado</option></select></div></div><div class="form-group"><label class="form-label">Descrição</label><input class="form-input" id="cri-desc"/></div><div class="form-group"><label class="form-label">Copy</label><textarea class="form-textarea" id="cri-copy"></textarea></div><div class="form-group"><label class="form-label">Mídia</label><label style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:7px;cursor:pointer;font-size:12px;color:var(--text2);margin-bottom:8px"><span>📎</span><span id="cri-upload-label">Trocar mídia</span><input type="file" id="cri-upload" accept="image/*,video/*" style="display:none" onchange="handleCriativoUpload()"/></label><input class="form-input" id="cri-midia"/><div id="cri-preview" style="margin-top:8px"></div></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-criativo-temp').remove()">Cancelar</button><button class="btn btn-primary" onclick="atualizarCriativo('${id}')">Salvar</button></div></div>`;
+    document.body.appendChild(ov);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      document.getElementById('cri-tipo').value=cr.tipo||'Criativo';
+      document.getElementById('cri-status').value=cr.status||'Ativo';
+      document.getElementById('cri-desc').value=cr.descricao||'';
+      document.getElementById('cri-copy').value=cr.copy||'';
+      document.getElementById('cri-midia').value=cr.midia_url||'';
+      if(cr.midia_url){const isVid=cr.midia_url.match(/\.(mp4|mov|webm|avi)/i);document.getElementById('cri-preview').innerHTML=isVid?`<video src="${cr.midia_url}" controls style="width:100%;max-height:200px;border-radius:8px;display:block;background:#000"></video>`:`<img src="${cr.midia_url}" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;display:block;background:var(--bg3)"/>`;}
+    }));
+  }catch(e){showToast('Erro','error');}
+}
+
+async function atualizarCriativo(id){try{await upd('criativos',{tipo:document.getElementById('cri-tipo').value,status:document.getElementById('cri-status').value,descricao:document.getElementById('cri-desc').value,copy:document.getElementById('cri-copy').value,midia_url:document.getElementById('cri-midia').value},`?id=eq.${id}`);showToast('Atualizado!');document.getElementById('modal-criativo-temp')?.remove();renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+async function deletarCriativo(id){if(!confirm('Remover?'))return;try{await del('criativos',`?id=eq.${id}`);renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+
+let resumoCampId=null;
+function openModalResumo(campId){
+  resumoCampId=campId;
+  const hoje=new Date();const sem=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-resumo-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:560px"><div class="modal-header"><div class="modal-title">Resumo semanal</div><button class="modal-close" onclick="document.getElementById('modal-resumo-temp').remove()">×</button></div><div class="modal-body"><div class="form-group"><label class="form-label">Semana (data de início)</label><input class="form-input" id="res-semana" type="date" value="${sem}"/></div><div class="metric-grid" style="margin-bottom:16px"><div class="form-group" style="margin-bottom:0"><label class="form-label">Impressões</label><input class="form-input" id="res-imp" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Cliques</label><input class="form-input" id="res-cli" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Conversões</label><input class="form-input" id="res-conv" type="number" placeholder="0"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">ROAS</label><input class="form-input" id="res-roas" type="number" step="0.01" placeholder="0.00"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">Verba gasta</label><input class="form-input" id="res-verba" type="number" placeholder="0.00"/></div></div><div class="form-group"><label class="form-label">Resumo</label><textarea class="form-textarea" id="res-texto" placeholder="Desempenho da semana..." style="min-height:80px"></textarea></div><div class="form-group"><label class="form-label">Próximos passos</label><textarea class="form-textarea" id="res-proximos" placeholder="O que precisa ser feito..." style="min-height:80px"></textarea></div><div class="form-group"><label class="form-label">⚠️ Alertas</label><textarea class="form-textarea" id="res-alertas" placeholder="ex: Trocar criativo, ajuste de campanha..." style="min-height:60px"></textarea></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-resumo-temp').remove()">Cancelar</button><button class="btn btn-primary" onclick="salvarResumo()">Salvar</button></div></div>`;
+  document.body.appendChild(ov);
+}
+
+async function salvarResumo(){const s=document.getElementById('res-semana').value;if(!s){showToast('Informe a semana','error');return;}try{await ins('resumos_semanais',{campanha_id:resumoCampId,semana:s,impressoes:document.getElementById('res-imp').value||null,cliques:document.getElementById('res-cli').value||null,conversoes:document.getElementById('res-conv').value||null,roas:document.getElementById('res-roas').value||null,verba_gasta:document.getElementById('res-verba').value||null,resumo:document.getElementById('res-texto').value,proximos_passos:document.getElementById('res-proximos')?.value||'',alertas:document.getElementById('res-alertas')?.value||''});showToast('Resumo salvo!');document.getElementById('modal-resumo-temp')?.remove();renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+async function deletarResumo(id){if(!confirm('Remover?'))return;try{await del('resumos_semanais',`?id=eq.${id}`);renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+
+async function exportarRelatorio(cid){
+  showToast('Gerando relatório...');
+  try{
+    const cliente=clientes.find(x=>x.id===cid);
+    const campanhas=await getAll('campanhas',`?cliente_id=eq.${cid}&order=criado_em.desc`);
+    let html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório — ${cliente.nome}</title><style>body{font-family:Arial,sans-serif;max-width:900px;margin:0 auto;padding:40px 32px;color:#111;}h1{font-size:24px;}h2{font-size:16px;color:#444;margin:24px 0 8px;}h3{font-size:14px;margin:16px 0 6px;}.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;margin-right:6px;}.ativa{background:#d1fae5;color:#065f46;}.pausada{background:#fef3c7;color:#92400e;}.encerrada{background:#f3f4f6;color:#6b7280;}table{width:100%;border-collapse:collapse;margin:8px 0 16px;}th,td{padding:8px 10px;border:1px solid #e5e7eb;font-size:12px;text-align:left;}th{background:#f9fafb;font-weight:600;}.cbox{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:12px;line-height:1.6;margin-bottom:8px;}.rbox{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px;font-size:12px;line-height:1.6;margin-top:6px;}hr{border:none;border-top:1px solid #e5e7eb;margin:24px 0;}</style></head><body><h1>Relatório de Performance — ${cliente.nome}</h1><p style="font-size:12px;color:#6b7280">Gerado em ${new Date().toLocaleDateString('pt-BR')} · b.content</p><hr>`;
+    for(const camp of campanhas){
+      const crs=await getAll('criativos',`?campanha_id=eq.${camp.id}&order=criado_em.asc`);
+      const res=await getAll('resumos_semanais',`?campanha_id=eq.${camp.id}&order=semana.asc`);
+      html+=`<h2>${camp.plataforma} — ${camp.nome}</h2><p><span class="badge ${camp.status.toLowerCase()}">${camp.status}</span>${camp.objetivo?` Objetivo: ${camp.objetivo}`:''}${camp.verba?` · Verba: R$ ${Number(camp.verba).toLocaleString('pt-BR')}`:''}</p>`;
+      if(crs.length){html+=`<h3>Criativos e Copys</h3>`;crs.forEach(cr=>{html+=`<div style="margin-bottom:10px"><strong>${cr.tipo}${cr.descricao?' — '+cr.descricao:''}</strong> (${cr.status})`;if(cr.copy)html+=`<div class="cbox">${cr.copy}</div>`;html+=`</div>`;});}
+      if(res.length){html+=`<h3>Resumos Semanais</h3><table><tr><th>Semana</th><th>Impressões</th><th>Cliques</th><th>Conversões</th><th>ROAS</th><th>Verba</th></tr>`;res.forEach(r=>{html+=`<tr><td>${r.semana}</td><td>${r.impressoes?Number(r.impressoes).toLocaleString('pt-BR'):'—'}</td><td>${r.cliques?Number(r.cliques).toLocaleString('pt-BR'):'—'}</td><td>${r.conversoes||'—'}</td><td>${r.roas?Number(r.roas).toFixed(2)+'x':'—'}</td><td>${r.verba_gasta?'R$ '+Number(r.verba_gasta).toLocaleString('pt-BR'):'—'}</td></tr>`;if(r.resumo)html+=`<tr><td colspan="6"><div class="rbox">${r.resumo}</div></td></tr>`;});html+=`</table>`;}
+      html+=`<hr>`;
+    }
+    html+=`</body></html>`;
+    const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`relatorio-${cliente.nome.toLowerCase().replace(/ /g,'-')}-${new Date().toISOString().slice(0,10)}.html`;a.click();URL.revokeObjectURL(url);showToast('Relatório gerado!');
+  }catch(e){showToast('Erro','error');console.error(e);}
+}
+
 // ---- COLABORADORES ----
 let colaboradoresList = [];
 
