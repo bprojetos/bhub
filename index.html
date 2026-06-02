@@ -493,6 +493,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
         <!-- Stats -->
         <div id="ck-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px"></div>
+        <!-- Gráfico de controle -->
+        <div id="ck-grafico"></div>
         <!-- List -->
         <div id="ck-list"></div>
       </div>
@@ -2377,11 +2379,87 @@ async function renderChecklist(){
     const atrasados=statusData.filter(x=>x.status==='Atrasado').length;
     const pendentes=statusData.filter(x=>x.status==='Pendente').length;
     const total=statusData.length;
+    // Determine current week (1-4) based on day of month
+    const hoje=new Date();
+    const diaDoMes=hoje.getDate();
+    const semanaAtual=diaDoMes<=7?1:diaDoMes<=14?2:diaDoMes<=21?3:4;
+    const semanaLabel=['','Semana 1','Semana 2','Semana 3','Semana 4'][semanaAtual];
+
+    // Expected progress: tasks from weeks 1..semanaAtual should be done
+    const totalRegistrados=statusData.length;
+    // Count tasks that belong to weeks up to current week (should be done by now)
+    const tarefasDeveriamEstarFeitas=statusData.filter(x=>x.semana<=semanaAtual).length;
+    const progressoEsperado=totalRegistrados?Math.round((tarefasDeveriamEstarFeitas/totalRegistrados)*100):0;
+    const progressoReal=totalRegistrados?Math.round((concluidos/totalRegistrados)*100):0;
+    const delta=progressoReal-progressoEsperado;
+    const situacao=delta>=0?'adiantado':'atrasado';
+    const situacaoColor=delta>=0?'var(--teal)':'var(--red)';
+    const situacaoBg=delta>=0?'var(--teal-dim)':'var(--red-dim)';
+
     stats.innerHTML=`
-      <div class="stat-card accent"><div class="stat-label">Concluídos</div><div class="stat-value">${concluidos}</div><div class="stat-sub">de ${total} registrados</div></div>
-      <div class="stat-card" style="border-color:rgba(90,180,255,0.2)"><div class="stat-label">Em andamento</div><div class="stat-value" style="color:var(--blue)">${andamento}</div></div>
-      <div class="stat-card danger"><div class="stat-label">Atrasados</div><div class="stat-value">${atrasados}</div></div>
-      <div class="stat-card warn"><div class="stat-label">Pendentes</div><div class="stat-value">${pendentes}</div></div>`;
+      <div class="stat-card accent" style="cursor:pointer" onclick="mostrarDetalhesCk('Concluído',${JSON.stringify(statusData).replace(/"/g,'&quot;')})">
+        <div class="stat-label">Concluídos</div><div class="stat-value">${concluidos}</div><div class="stat-sub">de ${total} registrados · clique para ver</div>
+      </div>
+      <div class="stat-card" style="border-color:rgba(90,180,255,0.2);cursor:pointer" onclick="mostrarDetalhesCk('Em andamento',${JSON.stringify(statusData).replace(/"/g,'&quot;')})">
+        <div class="stat-label">Em andamento</div><div class="stat-value" style="color:var(--blue)">${andamento}</div><div class="stat-sub">clique para ver</div>
+      </div>
+      <div class="stat-card danger" style="cursor:pointer" onclick="mostrarDetalhesCk('Atrasado',${JSON.stringify(statusData).replace(/"/g,'&quot;')})">
+        <div class="stat-label">Atrasados</div><div class="stat-value">${atrasados}</div><div class="stat-sub">clique para ver</div>
+      </div>
+      <div class="stat-card warn" style="cursor:pointer" onclick="mostrarDetalhesCk('Pendente',${JSON.stringify(statusData).replace(/"/g,'&quot;')})">
+        <div class="stat-label">Pendentes</div><div class="stat-value">${pendentes}</div><div class="stat-sub">clique para ver</div>
+      </div>
+    `;
+
+    // Progress control graph
+    const graficoEl=document.getElementById('ck-grafico');
+    if(graficoEl){
+      graficoEl.innerHTML=`
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-size:14px;font-weight:600">Controle de progresso — ${getMesLabelFull(ckMes)}</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px">Estamos na ${semanaLabel} · ${tarefasDeveriamEstarFeitas} de ${totalRegistrados} tarefas deveriam estar concluídas</div>
+            </div>
+            <div style="font-size:13px;font-weight:700;padding:6px 14px;border-radius:8px;background:${situacaoBg};color:${situacaoColor}">
+              ${delta>=0?'✓ Adiantados':'⚠️ Atrasados'} ${Math.abs(delta)}%
+            </div>
+          </div>
+          <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px">
+              <span>Progresso real: <strong style="color:var(--text)">${progressoReal}%</strong></span>
+              <span>Meta da semana: <strong style="color:var(--text)">${progressoEsperado}%</strong></span>
+            </div>
+            <div style="height:12px;background:var(--bg4);border-radius:6px;overflow:hidden;position:relative">
+              <!-- Expected marker -->
+              <div style="position:absolute;top:0;bottom:0;left:${progressoEsperado}%;width:2px;background:var(--text3);z-index:2"></div>
+              <!-- Real progress -->
+              <div style="height:100%;width:${progressoReal}%;background:${situacaoColor};border-radius:6px;transition:width 0.5s;position:relative;z-index:1"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:4px">
+              <span>0%</span>
+              <span style="position:relative;left:${progressoEsperado-50}%">▲ meta</span>
+              <span>100%</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px">
+            ${[1,2,3,4].map(s=>{
+              const semData=statusData.filter(x=>x.semana===s);
+              const semConc=semData.filter(x=>x.status==='Concluído').length;
+              const semTotal=semData.length;
+              const semPct=semTotal?Math.round((semConc/semTotal)*100):0;
+              const isAtual=s===semanaAtual;
+              const isPast=s<semanaAtual;
+              const cor=semConc===semTotal&&semTotal>0?'var(--teal)':isPast?'var(--red)':isAtual?'var(--accent)':'var(--text3)';
+              return `<div style="background:var(--bg3);border:1px solid ${isAtual?'var(--accent)':'var(--border)'};border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Semana ${s}${isAtual?' ◀':''}</div>
+                <div style="font-size:18px;font-weight:700;color:${cor}">${semPct}%</div>
+                <div style="font-size:10px;color:var(--text3);margin-top:2px">${semConc}/${semTotal}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }
 
     const semNums=filtroSemana?[parseInt(filtroSemana)]:[1,2,3,4];
     const semInfo={1:{label:'Semana 1',dias:'dias 01–07'},2:{label:'Semana 2',dias:'dias 08–14'},3:{label:'Semana 3',dias:'dias 15–21 · prazo'},4:{label:'Semana 4',dias:'dias 22–28 · envio'}};
@@ -2552,6 +2630,41 @@ async function salvarEtapasCliente(clienteId){
     window._ckEtapasTemp=null;
     renderChecklist();
   }catch(e){showToast('Erro ao salvar','error');console.error(e);}
+}
+
+
+function mostrarDetalhesCk(statusFiltro, statusData){
+  const filtrados=statusData.filter(x=>x.status===statusFiltro);
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-ck-det-temp';
+  const statusStyle={'Concluído':'background:var(--teal-dim);color:var(--teal)','Em andamento':'background:var(--blue-dim);color:var(--blue)','Atrasado':'background:var(--red-dim);color:var(--red)','Pendente':'background:var(--amber-dim);color:var(--amber)'};
+  const st=statusStyle[statusFiltro]||'';
+  ov.innerHTML=`<div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">${statusFiltro}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${filtrados.length} tarefa${filtrados.length!==1?'s':''} · ${getMesLabelFull(ckMes)}</div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal-ck-det-temp').remove()">×</button>
+    </div>
+    <div class="modal-body" style="max-height:60vh;overflow-y:auto">
+      ${!filtrados.length?'<div class="empty-state"><div class="empty-title">Nenhuma tarefa</div></div>':
+        filtrados.map(row=>{
+          const cl=clientes.find(x=>x.id===row.cliente_id);
+          const semInfo={1:'Semana 1',2:'Semana 2',3:'Semana 3',4:'Semana 4'};
+          return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              ${cl?`<div style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:${cl.cor}22;color:${cl.cor}">${cl.nome}</div>`:''}
+              <div style="font-size:11px;color:var(--text3)">${semInfo[row.semana]||''}</div>
+              <div style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;${st}">${row.status}</div>
+            </div>
+            <div style="font-size:13px;font-weight:500">${row.etapa}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${row.responsavel}</div>
+          </div>`;
+        }).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-ck-det-temp').remove()">Fechar</button></div>
+  </div>`;
+  document.body.appendChild(ov);
 }
 
 function toggleCkCliente(id){
