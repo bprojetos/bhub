@@ -107,6 +107,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .status-pill{display:flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:5px;font-weight:500;}
 .status-pill .dot{width:5px;height:5px;border-radius:50%;}
 
+/* CLIENT LIST VIEW */
+.client-list-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden;}
+.client-list-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--client-color,var(--accent));}
+.client-list-item:hover{border-color:var(--border2);background:var(--bg3);}
+
 /* CLIENT LOGO */
 .client-logo{width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0;}
 .client-logo-placeholder{width:36px;height:36px;border-radius:8px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--text2);flex-shrink:0;}
@@ -403,9 +408,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
         <div class="section-header">
           <div class="section-title">Clientes ativos</div>
-          <button class="btn btn-primary" id="btn-novo-cliente" onclick="openModalNovoCliente()" style="display:none">+ Novo cliente</button>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-ghost" id="btn-sort-az" onclick="toggleSortAZ()" style="font-size:12px;padding:5px 10px">A–Z</button>
+            <div style="display:flex;gap:2px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:2px">
+              <button id="btn-view-grid" onclick="setDashView('grid')" style="padding:5px 8px;border-radius:5px;border:none;cursor:pointer;background:var(--bg4);color:var(--text);font-size:13px" title="Grade">⊞</button>
+              <button id="btn-view-list" onclick="setDashView('list')" style="padding:5px 8px;border-radius:5px;border:none;cursor:pointer;background:none;color:var(--text2);font-size:13px" title="Lista">☰</button>
+            </div>
+            <button class="btn btn-primary" id="btn-novo-cliente" onclick="openModalNovoCliente()" style="display:none">+ Novo cliente</button>
+          </div>
         </div>
-        <div class="clients-grid" id="clients-grid"><div class="loading" style="grid-column:1/-1"><div class="spinner"></div> Carregando...</div></div>
+        <div id="clients-grid"><div class="loading" style="grid-column:1/-1"><div class="spinner"></div> Carregando...</div></div>
       </div>
 
       <!-- KANBAN -->
@@ -970,8 +982,29 @@ async function updateStats(){
   }catch(e){console.error(e);}
 }
 
+let dashView='grid';
+let sortAZ=false;
+
+function setDashView(v){
+  dashView=v;
+  const btnGrid=document.getElementById('btn-view-grid');
+  const btnList=document.getElementById('btn-view-list');
+  if(btnGrid){btnGrid.style.background=v==='grid'?'var(--bg4)':'none';btnGrid.style.color=v==='grid'?'var(--text)':'var(--text2)';}
+  if(btnList){btnList.style.background=v==='list'?'var(--bg4)':'none';btnList.style.color=v==='list'?'var(--text)':'var(--text2)';}
+  renderClientsGrid();
+}
+
+function toggleSortAZ(){
+  sortAZ=!sortAZ;
+  const btn=document.getElementById('btn-sort-az');
+  if(btn){btn.style.background=sortAZ?'var(--accent-dim)':'';btn.style.color=sortAZ?'var(--accent)':'';}
+  renderClientsGrid();
+}
+
 async function renderClientsGrid(){
   const grid=document.getElementById('clients-grid');
+  if(dashView==='grid'){grid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:12px;';}
+  else{grid.style.cssText='display:flex;flex-direction:column;gap:8px;';}
   if(!clientes.length){
     grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="empty-title">Nenhum cliente cadastrado</div><div class="empty-sub">${isAdmin?'Clique em "+ Novo cliente" para começar':'Aguarde o admin cadastrar'}</div></div>`;
     return;
@@ -980,7 +1013,36 @@ async function renderClientsGrid(){
   try{
     const n=new Date(),mes=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
     const all=await getAll('conteudos',`?mes=eq.${mes}`);
-    grid.innerHTML=clientes.map(c=>{
+    const clientesSorted=sortAZ?[...clientes].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')):clientes;
+
+    if(dashView==='list'){
+      grid.innerHTML=clientesSorted.map(c=>{
+        const cc=all.filter(x=>x.cliente_id===c.id),total=cc.length;
+        const mlabs=cc.filter(x=>x.status==='Subir no mLabs').length;
+        const pct=total?Math.round((mlabs/total)*100):0;
+        const cor=cc.filter(x=>['Correção Interna','Correção de Arte'].includes(x.status)).length;
+        const agu=cc.filter(x=>x.status==='Aprovação de Planejamento').length;
+        const logoEl=c.logo_url?`<img src="${c.logo_url}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">`:`<div style="width:36px;height:36px;border-radius:8px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${c.cor};flex-shrink:0">${c.nome.charAt(0)}</div>`;
+        return `<div class="client-list-item" style="--client-color:${c.cor}" onclick="showScreen('cliente','${c.id}')">
+          ${logoEl}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600">${c.nome}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
+              <div style="width:120px;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;flex-shrink:0"><div style="height:100%;width:${pct}%;background:${c.cor};border-radius:2px"></div></div>
+              <div style="font-size:11px;color:var(--text3)">${pct}% · ${total} conteúdo${total!==1?'s':''}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            ${agu?`<div class="status-pill" style="background:var(--purple-dim);color:var(--purple)">${agu} aguardando</div>`:''}
+            ${cor?`<div class="status-pill" style="background:var(--red-dim);color:var(--red)">${cor} correção</div>`:''}
+            <div style="color:var(--text3);font-size:14px">›</div>
+          </div>
+        </div>`;
+      }).join('');
+      return;
+    }
+
+    grid.innerHTML=clientesSorted.map(c=>{
       const cc=all.filter(x=>x.cliente_id===c.id),total=cc.length;
       const mlabs=cc.filter(x=>x.status==='Subir no mLabs').length;
       const pct=total?Math.round((mlabs/total)*100):0;
