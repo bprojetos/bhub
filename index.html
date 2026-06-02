@@ -2226,10 +2226,7 @@ async function renderChecklist(){
         <div style="padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;border-left:3px solid ${cl.cor}" onclick="toggleCkCliente('ck-${cl.id}')">
           ${cl.logo_url?`<img src="${cl.logo_url}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;flex-shrink:0">`:`<div style="width:28px;height:28px;border-radius:6px;background:${cl.cor}22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${cl.cor};flex-shrink:0">${cl.nome.charAt(0)}</div>`}
           <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-              <div style="font-size:14px;font-weight:600">${cl.nome}</div>
-              ${(()=>{const n=new Date();const mesAtualKey=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;const proxMes=new Date(n.getFullYear(),n.getMonth()+1,1);const proxMesKey=`${proxMes.getFullYear()}-${String(proxMes.getMonth()+1).padStart(2,'0')}`;if(ckMes===mesAtualKey)return '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--teal-dim);color:var(--teal)">Mês atual</span>';if(ckMes===proxMesKey)return '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--blue-dim);color:var(--blue)">Próximo mês</span>';return `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--bg4);color:var(--text3)">${getMesLabelFull(ckMes)}</span>`;})()}
-            </div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:4px">${cl.nome}</div>
             <div style="display:flex;align-items:center;gap:8px">
               <div style="flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${cl.cor};border-radius:2px"></div></div>
               <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${conclCl}/${totalCl} · ${pct}%</div>
@@ -2251,11 +2248,15 @@ async function renderChecklist(){
                   const row=lookup[key];
                   const status=row?.status||'Pendente';
                   const stStyle=STATUS_CK_STYLE[status]||STATUS_CK_STYLE['Pendente'];
-                  return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:7px">
+                  const mesRef=row?.mes_ref||'proximo';
+                  const mesRefStyle=mesRef==='atual'?'background:var(--teal-dim);color:var(--teal)':'background:var(--blue-dim);color:var(--blue)';
+                  const mesRefLabel=mesRef==='atual'?'🟢 Mês atual':'🔵 Próximo mês';
+                  return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px">
                     <div style="flex:1;min-width:0">
                       <div style="font-size:12px;font-weight:500">${et.etapa}</div>
                       <div style="font-size:10px;color:var(--text3);margin-top:1px">${et.responsavel}</div>
                     </div>
+                    <button onclick="toggleMesRef('${cl.id}','${sn}','${et.etapa.replace(/'/g,"\'")}','${et.responsavel}','${mesRef}',this)" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${mesRefStyle}">${mesRefLabel}</button>
                     <select onchange="atualizarCkStatus('${cl.id}','${sn}','${et.etapa.replace(/'/g,"\'")}','${et.responsavel}',this.value)" style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${stStyle}">
                       ${STATUS_CK.map(s=>`<option value="${s}" ${s===status?'selected':''}>${s}</option>`).join('')}
                     </select>
@@ -2382,6 +2383,20 @@ function toggleCkCliente(id){
   const open=body.style.display==='none';
   body.style.display=open?'block':'none';
   if(arrow)arrow.style.transform=open?'rotate(180deg)':'';
+}
+
+async function toggleMesRef(clienteId,semana,etapa,responsavel,mesRefAtual,btn){
+  const novoMesRef=mesRefAtual==='atual'?'proximo':'atual';
+  const style=novoMesRef==='atual'?'background:var(--teal-dim);color:var(--teal)':'background:var(--blue-dim);color:var(--blue)';
+  const label=novoMesRef==='atual'?'🟢 Mês atual':'🔵 Próximo mês';
+  btn.textContent=label;
+  btn.style.cssText=`font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${style}`;
+  btn.onclick=()=>toggleMesRef(clienteId,semana,etapa,responsavel,novoMesRef,btn);
+  try{
+    const ex=await getAll('checklist_semanas',`?cliente_id=eq.${clienteId}&mes=eq.${ckMes}&semana=eq.${semana}&responsavel=eq.${responsavel}&etapa=eq.${etapa}`);
+    if(ex.length){await upd('checklist_semanas',{mes_ref:novoMesRef},`?id=eq.${ex[0].id}`);}
+    else{await ins('checklist_semanas',{cliente_id:clienteId,mes:ckMes,semana:parseInt(semana),etapa,responsavel,status:'Pendente',mes_ref:novoMesRef});}
+  }catch(e){showToast('Erro','error');}
 }
 
 async function atualizarCkStatus(clienteId,semana,etapa,responsavel,status){
