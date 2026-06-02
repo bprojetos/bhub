@@ -366,6 +366,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="nav-item" id="nav-clientes" onclick="showScreen('config-clientes')">
           <div class="nav-dot" style="background:var(--text3)"></div>Gerenciar clientes
         </button>
+        <button class="nav-item" id="nav-colaboradores" onclick="showScreen('config-colaboradores')">
+          <div class="nav-dot" style="background:var(--text3)"></div>Colaboradores
+        </button>
         <button class="nav-item" id="nav-senhas" onclick="showScreen('config-senhas')">
           <div class="nav-dot" style="background:var(--text3)"></div>Senhas de acesso
         </button>
@@ -461,11 +464,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <select id="ck-filtro-colab" class="form-select" style="width:160px;font-size:12px" onchange="renderChecklist()">
               <option value="">Todos os colaboradores</option>
-              <option>Julio</option>
-              <option>Gisele</option>
-              <option>Bruna</option>
-              <option>May</option>
-              <option>Gica</option>
             </select>
             <select id="ck-filtro-semana" class="form-select" style="width:140px;font-size:12px" onchange="renderChecklist()">
               <option value="">Todas as semanas</option>
@@ -503,6 +501,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <button class="btn btn-primary" onclick="openModalNovoCliente()">+ Novo cliente</button>
         </div>
         <div id="config-clientes-list"></div>
+      </div>
+
+      <!-- CONFIG COLABORADORES -->
+      <div class="screen" id="screen-config-colaboradores">
+        <div class="section-header">
+          <div class="section-title">Colaboradores</div>
+          <button class="btn btn-primary" onclick="openModalNovoColab()">+ Novo colaborador</button>
+        </div>
+        <div id="config-colab-list"></div>
       </div>
 
       <!-- CONFIG SENHAS -->
@@ -736,7 +743,7 @@ async function init(){
   if(saved){document.getElementById('login-wrap').classList.remove('show');document.getElementById('app-layout').classList.add('show');aplicarRole();await loadApp();setTimeout(iniciarNotifRealtime,2000);}
 }
 
-async function loadApp(){await loadClientes();showScreen('dashboard');}
+async function loadApp(){await loadClientes();await loadColaboradores();showScreen('dashboard');}
 
 async function loadClientes(){
   try{clientes=await getAll('clientes','?order=criado_em.asc');renderSidebar();}
@@ -787,6 +794,10 @@ async function showScreen(id,cid){
     document.getElementById('topbar-title').textContent='Gerenciar clientes';
     document.getElementById('nav-clientes').classList.add('active');
     renderConfigClientes();
+  } else if(id==='config-colaboradores'){
+    document.getElementById('topbar-title').textContent='Colaboradores';
+    document.getElementById('nav-colaboradores').classList.add('active');
+    renderConfigColabs();
   } else if(id==='config-senhas'){
     document.getElementById('topbar-title').textContent='Senhas de acesso';
     document.getElementById('nav-senhas').classList.add('active');
@@ -1773,6 +1784,107 @@ async function handleMultiUpload(inputId,labelId,previewId){
 }
 
 // UTILS
+
+
+// ---- COLABORADORES ----
+let colaboradoresList = [];
+
+async function loadColaboradores(){
+  try{
+    colaboradoresList=await getAll('colaboradores','?order=nome.asc');
+    // Update checklist filter
+    const sel=document.getElementById('ck-filtro-colab');
+    if(sel){
+      sel.innerHTML='<option value="">Todos os colaboradores</option>'+
+        colaboradoresList.map(c=>`<option value="${c.nome}">${c.nome}</option>`).join('');
+    }
+    // Update datalist for responsavel field
+    const dl=document.getElementById('colaboradores-list');
+    if(dl)dl.innerHTML=colaboradoresList.map(c=>`<option value="${c.nome}">`).join('');
+  }catch(e){console.error(e);}
+}
+
+async function renderConfigColabs(){
+  await loadColaboradores();
+  const list=document.getElementById('config-colab-list');
+  if(!list)return;
+  if(!colaboradoresList.length){
+    list.innerHTML='<div class="empty-state"><div class="empty-title">Nenhum colaborador</div></div>';
+    return;
+  }
+  list.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px;max-width:600px">
+    ${colaboradoresList.map(col=>`
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;display:flex;align-items:center;gap:12px">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-dim);color:var(--accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${col.nome.charAt(0).toUpperCase()}</div>
+        <div style="flex:1;font-weight:500">${col.nome}</div>
+        <button class="btn btn-ghost" onclick="editarColab('${col.id}','${col.nome}')">Editar</button>
+        <button class="btn btn-danger" onclick="deletarColab('${col.id}','${col.nome}')">Excluir</button>
+      </div>`).join('')}
+  </div>`;
+}
+
+function openModalNovoColab(){
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-colab-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:400px">
+    <div class="modal-header"><div class="modal-title">Novo colaborador</div><button class="modal-close" onclick="document.getElementById('modal-colab-temp').remove()">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="colab-nome-input" placeholder="ex: Thainá"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-colab-temp').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarNovoColab()">Salvar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>document.getElementById('colab-nome-input')?.focus(),100);
+}
+
+async function salvarNovoColab(){
+  const nome=document.getElementById('colab-nome-input')?.value.trim();
+  if(!nome){showToast('Digite o nome','error');return;}
+  try{
+    await ins('colaboradores',{nome});
+    showToast('Colaborador adicionado!');
+    document.getElementById('modal-colab-temp').remove();
+    renderConfigColabs();
+  }catch(e){showToast('Erro','error');}
+}
+
+function editarColab(id,nomeAtual){
+  const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-colab-edit-temp';
+  ov.innerHTML=`<div class="modal" style="max-width:400px">
+    <div class="modal-header"><div class="modal-title">Editar colaborador</div><button class="modal-close" onclick="document.getElementById('modal-colab-edit-temp').remove()">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="colab-edit-input" value="${nomeAtual}"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-colab-edit-temp').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEditColab('${id}')">Salvar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>document.getElementById('colab-edit-input')?.focus(),100);
+}
+
+async function salvarEditColab(id){
+  const nome=document.getElementById('colab-edit-input')?.value.trim();
+  if(!nome){showToast('Digite o nome','error');return;}
+  try{
+    await upd('colaboradores',{nome},`?id=eq.${id}`);
+    showToast('Colaborador atualizado!');
+    document.getElementById('modal-colab-edit-temp').remove();
+    renderConfigColabs();
+  }catch(e){showToast('Erro','error');}
+}
+
+async function deletarColab(id,nome){
+  if(!confirm(`Excluir "${nome}"?`))return;
+  try{
+    await del('colaboradores',`?id=eq.${id}`);
+    showToast(`${nome} removido`);
+    renderConfigColabs();
+  }catch(e){showToast('Erro','error');}
+}
 
 // ---- CHECKLIST SEMANAL ----
 const SEMANAS_DEF = [
