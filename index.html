@@ -2226,8 +2226,11 @@ async function renderChecklist(){
         <div style="padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;border-left:3px solid ${cl.cor}" onclick="toggleCkCliente('ck-${cl.id}')">
           ${cl.logo_url?`<img src="${cl.logo_url}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;flex-shrink:0">`:`<div style="width:28px;height:28px;border-radius:6px;background:${cl.cor}22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${cl.cor};flex-shrink:0">${cl.nome.charAt(0)}</div>`}
           <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:600">${cl.nome}</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <div style="font-size:14px;font-weight:600">${cl.nome}</div>
+              ${(()=>{const n=new Date();const mesAtualKey=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;const proxMes=new Date(n.getFullYear(),n.getMonth()+1,1);const proxMesKey=`${proxMes.getFullYear()}-${String(proxMes.getMonth()+1).padStart(2,'0')}`;if(ckMes===mesAtualKey)return '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--teal-dim);color:var(--teal)">Mês atual</span>';if(ckMes===proxMesKey)return '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--blue-dim);color:var(--blue)">Próximo mês</span>';return `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--bg4);color:var(--text3)">${getMesLabelFull(ckMes)}</span>`;})()}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
               <div style="flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${cl.cor};border-radius:2px"></div></div>
               <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${conclCl}/${totalCl} · ${pct}%</div>
             </div>
