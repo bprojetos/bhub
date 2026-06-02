@@ -2634,6 +2634,16 @@ async function salvarEtapasCliente(clienteId){
 }
 
 
+async function deletarCkItem(id, btn){
+  try{
+    await del('checklist_semanas',`?id=eq.${id}`);
+    const row=btn.closest('div[style*="border-bottom"]');
+    if(row)row.remove();
+    showToast('Registro removido');
+    renderChecklist();
+  }catch(e){showToast('Erro','error');}
+}
+
 function mostrarDetalhesCk(statusFiltro, statusData){
   const filtrados=statusData.filter(x=>x.status===statusFiltro);
   const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-ck-det-temp';
@@ -2652,14 +2662,17 @@ function mostrarDetalhesCk(statusFiltro, statusData){
         filtrados.map(row=>{
           const cl=clientes.find(x=>x.id===row.cliente_id);
           const semInfo={1:'Semana 1',2:'Semana 2',3:'Semana 3',4:'Semana 4'};
-          return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-              ${cl?`<div style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:${cl.cor}22;color:${cl.cor}">${cl.nome}</div>`:''}
-              <div style="font-size:11px;color:var(--text3)">${semInfo[row.semana]||''}</div>
-              <div style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;${st}">${row.status}</div>
+          return `<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                ${cl?`<div style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:${cl.cor}22;color:${cl.cor}">${cl.nome}</div>`:''}
+                <div style="font-size:11px;color:var(--text3)">${semInfo[row.semana]||''}</div>
+                <div style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;${st}">${row.status}</div>
+              </div>
+              <div style="font-size:13px;font-weight:500">${row.etapa}</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px">${row.responsavel}</div>
             </div>
-            <div style="font-size:13px;font-weight:500">${row.etapa}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">${row.responsavel}</div>
+            <button onclick="deletarCkItem('${row.id}',this)" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text3);cursor:pointer;font-size:12px;padding:3px 8px;flex-shrink:0;transition:all 0.15s" onmouseover="this.style.color='var(--red)';this.style.borderColor='rgba(255,90,90,0.4)'" onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border)'">× Zerar</button>
           </div>`;
         }).join('')}
     </div>
