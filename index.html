@@ -1786,6 +1786,122 @@ async function handleMultiUpload(inputId,labelId,previewId){
 // UTILS
 
 
+// ---- CHAT ----
+let chatInterval=null;
+
+async function renderChat(cid){
+  const view=document.getElementById('cliente-view');
+  view.style.cssText='';
+  const nomeLocal=localStorage.getItem('bhub_nome')||'';
+  view.innerHTML=`<div style="max-width:700px">
+    ${!nomeLocal?`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+      <div style="font-size:13px;font-weight:500;white-space:nowrap">Seu nome no chat:</div>
+      <input class="form-input" id="chat-nome-input" placeholder="ex: Billie, Thainá, Marcos..." style="flex:1" value="${nomeLocal}"/>
+      <button class="btn btn-primary" onclick="salvarNomeChat()">Salvar</button>
+    </div>`:`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text3)">Você: <strong style="color:var(--text)">${nomeLocal}</strong></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="trocarNomeChat()">Trocar nome</button>
+        ${isAdmin?`<button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="limparConversa('${cid}')">🗑 Limpar conversa</button>`:''}
+      </div>
+    </div>`}
+    <div class="chat-wrap">
+      <div class="chat-messages" id="chat-messages"><div class="loading"><div class="spinner"></div></div></div>
+      <div class="chat-input-wrap">
+        <input class="form-input" id="chat-input" placeholder="Digite uma mensagem..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMensagem('${cid}');}"/>
+        <button class="btn btn-primary" onclick="enviarMensagem('${cid}')">Enviar</button>
+      </div>
+    </div>
+  </div>`;
+  await carregarMensagens(cid);
+  if(chatInterval)clearInterval(chatInterval);
+  chatInterval=setInterval(()=>carregarMensagens(cid),5000);
+}
+
+function salvarNomeChat(){
+  const nome=document.getElementById('chat-nome-input')?.value.trim();
+  if(!nome){showToast('Digite seu nome','error');return;}
+  localStorage.setItem('bhub_nome',nome);
+  showToast('Nome salvo!');
+  renderChat(clienteAtivo.id);
+}
+
+function trocarNomeChat(){
+  localStorage.removeItem('bhub_nome');
+  renderChat(clienteAtivo.id);
+}
+
+async function carregarMensagens(cid){
+  try{
+    const msgs=await getAll('chat_mensagens',`?cliente_id=eq.${cid}&order=criado_em.asc`);
+    const container=document.getElementById('chat-messages');
+    if(!container)return;
+    const nomeLocal=localStorage.getItem('bhub_nome')||'';
+    const wasBottom=container.scrollHeight-container.scrollTop<=container.clientHeight+50;
+    if(!msgs.length){container.innerHTML='<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">Nenhuma mensagem ainda. Diga oi!</div>';return;}
+    const byDay={};
+    msgs.forEach(m=>{
+      const diaKey=new Date(m.criado_em).toISOString().slice(0,10);
+      const dia=new Date(m.criado_em).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+      if(!byDay[diaKey])byDay[diaKey]={label:dia,msgs:[]};
+      byDay[diaKey].msgs.push(m);
+    });
+    let html='';
+    Object.entries(byDay).forEach(([diaKey,grupo])=>{
+      html+=`<div style="display:flex;align-items:center;gap:10px;margin:8px 0">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="font-size:11px;color:var(--text3);white-space:nowrap">${grupo.label}</div>
+          ${isAdmin?`<button onclick="deletarDia('${diaKey}','${cid}')" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:10px;padding:1px 6px">Excluir dia</button>`:''}
+        </div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>`;
+      grupo.msgs.forEach(m=>{
+        const isMe=m.autor===nomeLocal;
+        const hora=new Date(m.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        html+='<div class="chat-msg '+(isMe?'me':'other')+'">'
+          +'<div class="chat-bubble">'+m.mensagem+'</div>'
+          +'<div class="chat-meta" style="display:flex;align-items:center;gap:6px">'
+            +(isMe?'':'<strong>'+m.autor+'</strong> · ')+hora
+            +(isAdmin?` <button onclick="deletarMensagem('${m.id}','${cid}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 2px;line-height:1;opacity:0.6">×</button>`:'')
+          +'</div></div>';
+      });
+    });
+    container.innerHTML=html;
+    if(wasBottom)container.scrollTop=container.scrollHeight;
+  }catch(e){console.error(e);}
+}
+
+async function deletarMensagem(id,cid){
+  try{await del('chat_mensagens',`?id=eq.${id}`);await carregarMensagens(cid);}
+  catch(e){showToast('Erro','error');}
+}
+
+async function deletarDia(diaKey,cid){
+  if(!confirm(`Excluir todas as mensagens de ${diaKey}?`))return;
+  try{
+    const inicio=diaKey+'T00:00:00.000Z';const fim=diaKey+'T23:59:59.999Z';
+    await del('chat_mensagens',`?cliente_id=eq.${cid}&criado_em=gte.${inicio}&criado_em=lte.${fim}`);
+    showToast('Mensagens do dia excluídas');await carregarMensagens(cid);
+  }catch(e){showToast('Erro','error');}
+}
+
+async function limparConversa(cid){
+  if(!confirm('Limpar toda a conversa?'))return;
+  try{await del('chat_mensagens',`?cliente_id=eq.${cid}`);showToast('Conversa limpa');await carregarMensagens(cid);}
+  catch(e){showToast('Erro','error');}
+}
+
+async function enviarMensagem(cid){
+  const input=document.getElementById('chat-input');
+  const msg=input?.value.trim();if(!msg)return;
+  const nome=localStorage.getItem('bhub_nome');
+  if(!nome){showToast('Defina seu nome no chat primeiro','error');return;}
+  input.value='';
+  try{await ins('chat_mensagens',{cliente_id:cid,autor:nome,mensagem:msg});await carregarMensagens(cid);}
+  catch(e){showToast('Erro ao enviar','error');}
+}
+
 // ---- PERFORMANCE ----
 const PLATAFORMAS=['Meta Ads','Google Ads','LinkedIn Ads','TikTok Ads'];
 const PLAT_COLORS={'Meta Ads':'#1877f2','Google Ads':'#ea4335','LinkedIn Ads':'#0a66c2','TikTok Ads':'#010101'};
