@@ -611,8 +611,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div id="preview-novo" style="display:flex;flex-wrap:wrap;gap:6px"></div>
         <input type="hidden" id="input-midia" value=""/>
       </div>
-      <div class="form-group"><label class="form-label">Link de referência (visível para o cliente)</label><input class="form-input" id="input-ref" placeholder="https://..."/></div>
-      <div class="form-group"><label class="form-label">Observação interna</label><input class="form-input" id="input-obs" placeholder="Referência, contexto, briefing..."/></div>
+      <div class="form-group"><label class="form-label">Link de referência (visível para o cliente)</label><input class="form-input" id="input-ref" placeholder="https://drive.google.com/... ou qualquer URL"/></div>
+      <div class="form-group"><label class="form-label">Observação interna</label><textarea class="form-textarea" id="input-obs" placeholder="Briefing: ...
+Observação: ..." style="min-height:80px"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-novo-conteudo')">Cancelar</button><button class="btn btn-primary" onclick="salvarConteudo()">Salvar conteúdo</button></div>
   </div>
@@ -1165,7 +1166,7 @@ function renderCard(card){
   const pubDate=card.data_publicacao?new Date(card.data_publicacao+'T00:00:00'):null;
   const prazoVencido=prazoDate&&prazoDate<hoje&&card.status!=='Subir no mLabs';
   const pubVencida=pubDate&&pubDate<hoje&&card.status!=='Subir no mLabs';
-  return `<div class="kanban-card" draggable="true" ondragstart="onDragStart(event,'${card.id}')" ondragend="onDragEnd(event)" onclick="openDetail('${card.id}')" style="${prazoVencido||pubVencida?'border-color:rgba(255,90,90,0.4);':''}">
+  return `<div class="kanban-card" draggable="true" ondragstart="onDragStart(event,'${card.id}')" ondragend="onDragEnd(event)" data-card-id="${card.id}" onclick="openDetail(this.dataset.cardId)" style="${prazoVencido||pubVencida?'border-color:rgba(255,90,90,0.4);':''}">
     ${prazoVencido?`<div style="font-size:10px;font-weight:600;color:var(--red);background:var(--red-dim);padding:3px 8px;border-radius:4px;margin-bottom:6px">⚠️ Prazo vencido</div>`:''}
     ${pubVencida&&!prazoVencido?`<div style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);padding:3px 8px;border-radius:4px;margin-bottom:6px">⏰ Publicação atrasada</div>`:''}
     ${hasImg?`<div style="width:100%;height:72px;border-radius:6px;margin-bottom:8px;overflow:hidden;background:var(--bg4)"><img src="${card.midia_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.remove()"/></div>`:''}
@@ -1223,7 +1224,8 @@ function openDetail(id){
       <div id="ref-preview" style="margin-top:8px">${card.link_referencia?`<div id="ref-preview-inner">${renderRefPreview(card.link_referencia)}</div>`:''}</div>
     </div>
     <div class="form-group"><label class="form-label">Responsável pela produção</label><input class="form-input" id="e-resp-prod" value="${card.responsavel_producao||''}" placeholder="ex: João (vídeo), Maria (arte)..." list="colaboradores-list"/></div>
-    <div class="form-group"><label class="form-label">Observação</label><input class="form-input" id="e-obs" value="${card.observacao||''}" placeholder="Referência, correção solicitada..."/></div>`;
+    <div class="form-group"><label class="form-label">Observação</label><textarea class="form-textarea" id="e-obs" style="min-height:80px" placeholder="Briefing: ...
+Observação: ...">${card.observacao||''}</textarea></div>`;
   uploadedUrls.edit=card.midias_urls&&card.midias_urls.length?[...card.midias_urls]:(card.midia_url?[card.midia_url]:[]);
   // Pre-highlight current status immediately
   setTimeout(()=>{
@@ -1336,7 +1338,7 @@ async function salvarCliente(){
 
 // CONTEUDO MODAL
 function openModalNovoConteudo(){
-  ['input-tipo','input-data','input-responsavel','input-copy','input-midia','input-obs','input-ref'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['input-tipo','input-data','input-responsavel','input-copy','input-midia','input-ref'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const obsEl=document.getElementById('input-obs');if(obsEl)obsEl.value='';
   document.getElementById('input-status').value='Planejamento';
   document.getElementById('input-tag').value='';
   selTagVal='';
@@ -1660,8 +1662,7 @@ function renderCalHTML(items,mes,colorMap){
         const color=colorMap?colorMap[item.cliente_id]||'#888':TC[item.tipo]||'#888';
         const label=colorMap?(clientes.find(c=>c.id===item.cliente_id)?.nome||''):`${item.tipo}`;
         const tag=item.tag_demanda&&TAG_MAP[item.tag_demanda];
-        return `<div class="cal-event" style="background:${color}22;color:${color};border:1px solid ${color}44" onclick="openDetail('${item.id}')" title="${item.copy||''}">${tag?tag.label.charAt(0)+' ':''}${label}${item.copy?' · '+item.copy.slice(0,18):''}${item.copy&&item.copy.length>18?'...':''}
-        </div>`;
+        return `<div class="cal-event" style="background:${color}22;color:${color};border:1px solid ${color}44" data-card-id="${item.id}" onclick="openDetail(this.dataset.cardId)">${tag?tag.label.charAt(0)+' ':'' }${label}${item.copy?' · '+item.copy.slice(0,18):''}${item.copy&&item.copy.length>18?'...':''}</div>`;
       }).join('')+
     `</div>`;
   }
