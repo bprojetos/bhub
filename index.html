@@ -726,7 +726,12 @@ function entrar(){
   document.getElementById('login-wrap').classList.remove('show');
   document.getElementById('app-layout').classList.add('show');
   aplicarRole();loadApp();
-  setTimeout(iniciarNotifRealtime,2000);
+  setTimeout(async()=>{
+    await iniciarNotifRealtime();
+    // Register login notification
+    const nome=localStorage.getItem('bhub_nome')||'Equipe';
+    await registrarNotif(`entrou no b.hub`);
+  },2000);
 }
 
 function aplicarRole(){
@@ -757,7 +762,20 @@ async function init(){
   if(saved){document.getElementById('login-wrap').classList.remove('show');document.getElementById('app-layout').classList.add('show');aplicarRole();await loadApp();setTimeout(iniciarNotifRealtime,2000);}
 }
 
-async function loadApp(){await loadClientes();await loadColaboradores();showScreen('dashboard');}
+async function loadApp(){
+  await loadClientes();
+  await loadColaboradores();
+  // Restore last page
+  const savedPag=sessionStorage.getItem('bhub_pag');
+  if(savedPag){
+    try{
+      const {id,cid}=JSON.parse(savedPag);
+      await showScreen(id,cid||undefined);
+      return;
+    }catch(e){}
+  }
+  showScreen('dashboard');
+}
 
 async function loadClientes(){
   try{clientes=await getAll('clientes','?order=criado_em.asc');renderSidebar();}
@@ -774,6 +792,8 @@ function renderSidebar(){
 }
 
 async function showScreen(id,cid){
+  // Save current page state
+  sessionStorage.setItem('bhub_pag',JSON.stringify({id,cid:cid||null}));
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('screen-'+id).classList.add('active');
@@ -1887,7 +1907,17 @@ function salvarNomeChat(){
   if(!nome){showToast('Digite seu nome','error');return;}
   localStorage.setItem('bhub_nome',nome);
   showToast('Nome salvo!');
-  renderChat(clienteAtivo.id);
+  // Just update the header area, don't re-render everything
+  const nameArea=document.getElementById('chat-nome-input')?.closest('div[style*="border-radius"]');
+  if(nameArea){
+    nameArea.outerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text3)">Você: <strong style="color:var(--text)">${nome}</strong></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="trocarNomeChat()">Trocar nome</button>
+        ${isAdmin?`<button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="limparConversa('${clienteAtivo.id}')">🗑 Limpar conversa</button>`:''}
+      </div>
+    </div>`;
+  }
 }
 
 function trocarNomeChat(){
