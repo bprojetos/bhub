@@ -1214,25 +1214,34 @@ function openDetail(id){
       </label>
       <div id="preview-edit" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
-    <div class="form-group" style="margin-bottom:16px"><label class="form-label">Copy / Legenda</label><textarea class="form-textarea" id="e-copy" style="min-height:120px">${card.copy||''}</textarea></div>
+    <div class="form-group" style="margin-bottom:16px"><label class="form-label">Copy / Legenda</label><textarea class="form-textarea" id="e-copy" style="min-height:120px"></textarea></div>
     <div class="form-group" style="margin-bottom:16px">
       <label class="form-label">Status</label>
       <div class="status-select-grid">${STATUS_LIST.map(s=>`<button class="status-btn" id="sb-${slugify(s)}" onclick="selStatus('${s}')" style="${s===card.status?getSS(s):''}">${s}</button>`).join('')}</div>
     </div>
     <div class="form-group"><label class="form-label">Link de referência (visível para o cliente)</label>
-      <input class="form-input" id="e-ref" value="${card.link_referencia||''}" placeholder="https://..." oninput="previewRef(this.value)"/>
-      <div id="ref-preview" style="margin-top:8px">${card.link_referencia?`<div id="ref-preview-inner">${renderRefPreview(card.link_referencia)}</div>`:''}</div>
+      <input class="form-input" id="e-ref" placeholder="https://..." oninput="previewRef(this.value)"/>
+      <div id="ref-preview" style="margin-top:8px"></div>
     </div>
     <div class="form-group"><label class="form-label">Responsável pela produção</label><input class="form-input" id="e-resp-prod" value="${card.responsavel_producao||''}" placeholder="ex: João (vídeo), Maria (arte)..." list="colaboradores-list"/></div>
     <div class="form-group"><label class="form-label">Observação</label><textarea class="form-textarea" id="e-obs" style="min-height:80px" placeholder="Briefing: ...
 Observação: ...">${card.observacao||''}</textarea></div>`;
   uploadedUrls.edit=card.midias_urls&&card.midias_urls.length?[...card.midias_urls]:(card.midia_url?[card.midia_url]:[]);
-  // Pre-highlight current status immediately
   setTimeout(()=>{
+    renderPreview('preview-edit',uploadedUrls.edit);
+    // Safely set all text fields
+    const refEl=document.getElementById('e-ref');
+    if(refEl)refEl.value=card.link_referencia||'';
+    if(refEl&&card.link_referencia)previewRef(card.link_referencia);
+    const copyEl=document.getElementById('e-copy');
+    if(copyEl)copyEl.value=card.copy||'';
+    const obsEl=document.getElementById('e-obs');
+    if(obsEl)obsEl.value=card.observacao||'';
+    // Pre-highlight current status
     document.querySelectorAll('.status-btn').forEach(b=>b.style='');
     const activeBtn=document.getElementById('sb-'+slugify(card.status));
     if(activeBtn)activeBtn.style=getSS(card.status);
-  },0);
+  },50);
   setTimeout(()=>renderPreview('preview-edit',uploadedUrls.edit),50);
   document.getElementById('modal-card-detail').classList.add('open');
 }
