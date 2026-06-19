@@ -1276,7 +1276,7 @@ function openDetail(id){
     const respProdEl=document.getElementById('e-resp-prod');
     if(respProdEl)respProdEl.value=card.responsavel_producao||'';
     const midiaEl=document.getElementById('e-midia');
-    if(midiaEl&&!uploadedUrls.edit.length)midiaEl.value=card.midia_url||'';
+    if(midiaEl)midiaEl.value=card.midia_url||'';
     const refEl=document.getElementById('e-ref');
     if(refEl)refEl.value=card.link_referencia||'';
     if(refEl&&card.link_referencia)previewRef(card.link_referencia);
@@ -1312,7 +1312,16 @@ function selStatus(s){
 async function atualizarConteudo(){
   if(!cardEdit)return;
   try{
-    const medias=uploadedUrls.edit.length?uploadedUrls.edit:[document.getElementById('e-midia').value].filter(Boolean);
+    const midiaTexto=document.getElementById('e-midia').value.trim();
+    // Combine: uploaded files take priority for the gallery, but the typed URL (e.g. Drive link) is preserved as primary midia_url if no uploads exist
+    let medias;
+    if(uploadedUrls.edit.length){
+      medias=uploadedUrls.edit;
+    } else if(midiaTexto){
+      medias=[midiaTexto];
+    } else {
+      medias=[];
+    }
     await upd('conteudos',{
       tipo:document.getElementById('e-tipo').value,
       data_publicacao:document.getElementById('e-data').value||null,
