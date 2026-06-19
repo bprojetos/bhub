@@ -1157,7 +1157,10 @@ async function renderKanban(cid){
 }
 
 function renderCard(card){
-  const c=TC[card.tipo]||'#888',hasImg=card.midia_url&&card.midia_url.startsWith('http');
+  const c=TC[card.tipo]||'#888';
+  const isImageUrl=card.midia_url&&card.midia_url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i);
+  const isVideoUrl=card.midia_url&&card.midia_url.match(/\.(mp4|mov|webm|avi)(\?|$)/i);
+  const isDriveLink=card.midia_url&&card.midia_url.includes('drive.google.com');
   const isCorrecao=['Correção Interna','Correção de Arte'].includes(card.status);
   const tag=card.tag_demanda&&TAG_MAP[card.tag_demanda];
   const statusStyle=getSS(card.status);
@@ -1166,19 +1169,58 @@ function renderCard(card){
   const pubDate=card.data_publicacao?new Date(card.data_publicacao+'T00:00:00'):null;
   const prazoVencido=prazoDate&&prazoDate<hoje&&card.status!=='Subir no mLabs';
   const pubVencida=pubDate&&pubDate<hoje&&card.status!=='Subir no mLabs';
-  return `<div class="kanban-card" draggable="true" ondragstart="onDragStart(event,'${card.id}')" ondragend="onDragEnd(event)" data-card-id="${card.id}" onclick="openDetail(this.dataset.cardId)" style="${prazoVencido||pubVencida?'border-color:rgba(255,90,90,0.4);':''}">
+  const div=document.createElement('div');
+  div.className='kanban-card';
+  div.draggable=true;
+  div.dataset.cardId=card.id;
+  div.setAttribute('ondragstart',"onDragStart(event,this.dataset.cardId)");
+  div.setAttribute('ondragend','onDragEnd(event)');
+  div.setAttribute('onclick','openDetail(this.dataset.cardId)');
+  if(prazoVencido||pubVencida)div.style.borderColor='rgba(255,90,90,0.4)';
+
+  let mediaHTML='';
+  if(isImageUrl){
+    mediaHTML=`<div class="card-media-wrap" style="width:100%;height:72px;border-radius:6px;margin-bottom:8px;overflow:hidden;background:var(--bg4)"></div>`;
+  } else if(isVideoUrl){
+    mediaHTML=`<div class="card-media-wrap" style="width:100%;height:72px;border-radius:6px;margin-bottom:8px;overflow:hidden;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px">▶</div>`;
+  } else if(isDriveLink){
+    mediaHTML=`<div class="card-media-wrap" style="width:100%;padding:8px 10px;border-radius:6px;margin-bottom:8px;background:var(--bg4);display:flex;align-items:center;gap:6px;font-size:11px;color:var(--blue)">📁 Link do Drive</div>`;
+  }
+
+  div.innerHTML=`
     ${prazoVencido?`<div style="font-size:10px;font-weight:600;color:var(--red);background:var(--red-dim);padding:3px 8px;border-radius:4px;margin-bottom:6px">⚠️ Prazo vencido</div>`:''}
     ${pubVencida&&!prazoVencido?`<div style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);padding:3px 8px;border-radius:4px;margin-bottom:6px">⏰ Publicação atrasada</div>`:''}
-    ${hasImg?`<div style="width:100%;height:72px;border-radius:6px;margin-bottom:8px;overflow:hidden;background:var(--bg4)"><img src="${card.midia_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.remove()"/></div>`:''}
+    ${mediaHTML}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <div class="kcard-type" style="margin-bottom:0"><div class="type-dot" style="background:${c}"></div><span style="color:${c}">${card.tipo}</span></div>
       <div style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;${statusStyle}">${card.status}</div>
     </div>
     ${tag?`<div class="tag-badge" style="background:${tag.bg};color:${tag.color}">${tag.label}</div>`:''}
-    <div class="kcard-copy">${card.copy||'<span style="color:var(--text3);font-style:italic">sem copy</span>'}</div>
-    ${isCorrecao&&card.observacao?`<div style="margin-top:8px;padding:7px 9px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(255,181,71,0.2);font-size:11px;color:var(--amber);line-height:1.4">✎ ${card.observacao}</div>`:''}
-    <div class="kcard-footer"><div class="kcard-date">${card.data_publicacao?formatDate(card.data_publicacao):'—'}</div>${card.responsavel_producao?`<div class="kcard-resp" style="background:var(--accent-dim);color:var(--accent)">${card.responsavel_producao}</div>`:card.responsavel?`<div class="kcard-resp">${card.responsavel}</div>`:''}</div>
-  </div>`;
+    <div class="kcard-copy"></div>
+    ${isCorrecao&&card.observacao?`<div class="kcard-obs" style="margin-top:8px;padding:7px 9px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(255,181,71,0.2);font-size:11px;color:var(--amber);line-height:1.4"></div>`:''}
+    <div class="kcard-footer"><div class="kcard-date">${card.data_publicacao?formatDate(card.data_publicacao):'—'}</div>${card.responsavel_producao?`<div class="kcard-resp" style="background:var(--accent-dim);color:var(--accent)"></div>`:card.responsavel?`<div class="kcard-resp"></div>`:''}</div>
+  `;
+
+  // Safely set text content (no HTML injection risk) and image src
+  const mediaWrap=div.querySelector('.card-media-wrap');
+  if(mediaWrap&&isImageUrl){
+    const img=document.createElement('img');
+    img.src=card.midia_url;
+    img.style.cssText='width:100%;height:100%;object-fit:cover';
+    img.onerror=()=>mediaWrap.remove();
+    mediaWrap.appendChild(img);
+  }
+  const copyEl=div.querySelector('.kcard-copy');
+  if(copyEl){
+    if(card.copy)copyEl.textContent=card.copy;
+    else copyEl.innerHTML='<span style="color:var(--text3);font-style:italic">sem copy</span>';
+  }
+  const obsEl=div.querySelector('.kcard-obs');
+  if(obsEl)obsEl.textContent='✎ '+(card.observacao||'');
+  const respEls=div.querySelectorAll('.kcard-resp');
+  respEls.forEach(el=>{el.textContent=card.responsavel_producao||card.responsavel||'';});
+
+  return div.outerHTML;
 }
 
 function openDetail(id){
