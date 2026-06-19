@@ -1193,9 +1193,9 @@ function openDetail(id){
       <div class="form-group"><label class="form-label">Data de publicação</label><input class="form-input" id="e-data" type="date" value="${card.data_publicacao||''}"/></div>
     </div>
     <div class="form-row" style="margin-bottom:16px">
-      <div class="form-group"><label class="form-label">Quem criou a demanda</label><input class="form-input" id="e-resp" value="${card.responsavel||''}" placeholder="ex: Thainá" list="colaboradores-list"/></div>
+      <div class="form-group"><label class="form-label">Quem criou a demanda</label><input class="form-input" id="e-resp" placeholder="ex: Thainá" list="colaboradores-list"/></div>
       <div class="form-group"><label class="form-label">⏰ Entregar até (interno)</label><input class="form-input" id="e-prazo" type="date" value="${card.prazo_entrega||''}"/></div>
-    <div class="form-group"><label class="form-label">URL da mídia</label><input class="form-input" id="e-midia" value="${card.midia_url||''}" placeholder="https://..."/></div>
+    <div class="form-group"><label class="form-label">URL da mídia ou link do Drive</label><input class="form-input" id="e-midia" placeholder="https://drive.google.com/... ou link direto"/></div>
     </div>
     <div class="form-group" style="margin-bottom:12px">
       <label class="form-label">Tag de demanda</label>
@@ -1223,13 +1223,18 @@ function openDetail(id){
       <input class="form-input" id="e-ref" placeholder="https://..." oninput="previewRef(this.value)"/>
       <div id="ref-preview" style="margin-top:8px"></div>
     </div>
-    <div class="form-group"><label class="form-label">Responsável pela produção</label><input class="form-input" id="e-resp-prod" value="${card.responsavel_producao||''}" placeholder="ex: João (vídeo), Maria (arte)..." list="colaboradores-list"/></div>
-    <div class="form-group"><label class="form-label">Observação</label><textarea class="form-textarea" id="e-obs" style="min-height:80px" placeholder="Briefing: ...
-Observação: ...">${card.observacao||''}</textarea></div>`;
+    <div class="form-group"><label class="form-label">Responsável pela produção</label><input class="form-input" id="e-resp-prod" placeholder="ex: João (vídeo), Maria (arte)..." list="colaboradores-list"/></div>
+    <div class="form-group"><label class="form-label">Observação</label><textarea class="form-textarea" id="e-obs" style="min-height:80px" placeholder="Briefing: ...&#10;Observação: ..."></textarea></div>`;
   uploadedUrls.edit=card.midias_urls&&card.midias_urls.length?[...card.midias_urls]:(card.midia_url?[card.midia_url]:[]);
   setTimeout(()=>{
     renderPreview('preview-edit',uploadedUrls.edit);
     // Safely set all text fields
+    const respEl=document.getElementById('e-resp');
+    if(respEl)respEl.value=card.responsavel||'';
+    const respProdEl=document.getElementById('e-resp-prod');
+    if(respProdEl)respProdEl.value=card.responsavel_producao||'';
+    const midiaEl=document.getElementById('e-midia');
+    if(midiaEl&&!uploadedUrls.edit.length)midiaEl.value=card.midia_url||'';
     const refEl=document.getElementById('e-ref');
     if(refEl)refEl.value=card.link_referencia||'';
     if(refEl&&card.link_referencia)previewRef(card.link_referencia);
@@ -1242,7 +1247,6 @@ Observação: ...">${card.observacao||''}</textarea></div>`;
     const activeBtn=document.getElementById('sb-'+slugify(card.status));
     if(activeBtn)activeBtn.style=getSS(card.status);
   },50);
-  setTimeout(()=>renderPreview('preview-edit',uploadedUrls.edit),50);
   document.getElementById('modal-card-detail').classList.add('open');
 }
 
@@ -1283,7 +1287,10 @@ async function atualizarConteudo(){
     },`?id=eq.${cardEdit.id}`);
     if(statusSel&&statusSel!==cardEdit.status){await registrarNotif(`atualizou status para ${statusSel}`,clienteAtivo?.id);await registrarHistorico(cardEdit.id,cardEdit.status,statusSel);}
     showToast('Conteúdo atualizado!');closeModal('modal-card-detail');cardEdit=null;statusSel=null;
-    await renderKanban(clienteAtivo.id);
+    if(clienteView==='cal')await renderCalCliente(clienteAtivo.id);
+    else if(clienteView==='correcoes')await renderCorrecoes(clienteAtivo.id);
+    else if(clienteView==='demandas')await renderDemandas(clienteAtivo.id);
+    else await renderKanban(clienteAtivo.id);
   }catch(e){showToast('Erro ao atualizar','error');console.error(e);}
 }
 
