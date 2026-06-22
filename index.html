@@ -1143,20 +1143,45 @@ async function renderKanban(cid){
   try{
     const data=await getAll('conteudos',`?cliente_id=eq.${cid}&mes=eq.${mesAtivo}&order=criado_em.asc`);
     conteudos=data;
-    view.innerHTML=STATUS_LIST.map(st=>{
+    view.innerHTML='';
+    STATUS_LIST.forEach(st=>{
       const cards=data.filter(x=>x.status===st),slug=slugify(st);
-      return `<div class="kanban-col col-${slug}">
-        <div class="kanban-col-header"><div class="kanban-col-title">${st}</div><div class="kanban-col-count">${cards.length}</div></div>
-        <div class="kanban-cards" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="onDrop(event,'${st}')" data-status="${st}">
-          ${cards.map(renderCard).join('')}
-          ${!cards.length?'<div style="padding:16px 12px;text-align:center;color:var(--text3);font-size:20px;opacity:0.3">·</div>':''}
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){view.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-title">Erro</div></div>';}
+      const col=document.createElement('div');
+      col.className='kanban-col col-'+slug;
+
+      const header=document.createElement('div');
+      header.className='kanban-col-header';
+      const titleEl=document.createElement('div');
+      titleEl.className='kanban-col-title';
+      titleEl.textContent=st;
+      const countEl=document.createElement('div');
+      countEl.className='kanban-col-count';
+      countEl.textContent=cards.length;
+      header.appendChild(titleEl);header.appendChild(countEl);
+      col.appendChild(header);
+
+      const cardsWrap=document.createElement('div');
+      cardsWrap.className='kanban-cards';
+      cardsWrap.dataset.status=st;
+      cardsWrap.addEventListener('dragover',e=>{e.preventDefault();cardsWrap.classList.add('drag-over');});
+      cardsWrap.addEventListener('dragleave',()=>cardsWrap.classList.remove('drag-over'));
+      cardsWrap.addEventListener('drop',e=>onDrop(e,st));
+
+      if(cards.length){
+        cards.forEach(card=>cardsWrap.appendChild(buildCardEl(card)));
+      } else {
+        const empty=document.createElement('div');
+        empty.style.cssText='padding:16px 12px;text-align:center;color:var(--text3);font-size:20px;opacity:0.3';
+        empty.textContent='·';
+        cardsWrap.appendChild(empty);
+      }
+      col.appendChild(cardsWrap);
+      view.appendChild(col);
+    });
+  }catch(e){view.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-title">Erro</div></div>';console.error(e);}
 }
 
-function renderCard(card){
+function buildCardEl(card){
   const c=TC[card.tipo]||'#888';
   const isImageUrl=card.midia_url&&card.midia_url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i);
   const isVideoUrl=card.midia_url&&card.midia_url.match(/\.(mp4|mov|webm|avi)(\?|$)/i);
@@ -1169,62 +1194,125 @@ function renderCard(card){
   const pubDate=card.data_publicacao?new Date(card.data_publicacao+'T00:00:00'):null;
   const prazoVencido=prazoDate&&prazoDate<hoje&&card.status!=='Subir no mLabs';
   const pubVencida=pubDate&&pubDate<hoje&&card.status!=='Subir no mLabs';
+
   const div=document.createElement('div');
   div.className='kanban-card';
   div.draggable=true;
   div.dataset.cardId=card.id;
-  div.setAttribute('ondragstart',"onDragStart(event,this.dataset.cardId)");
-  div.setAttribute('ondragend','onDragEnd(event)');
-  div.setAttribute('onclick','openDetail(this.dataset.cardId)');
   if(prazoVencido||pubVencida)div.style.borderColor='rgba(255,90,90,0.4)';
+  div.addEventListener('dragstart',e=>onDragStart(e,card.id));
+  div.addEventListener('dragend',e=>onDragEnd(e));
+  div.addEventListener('click',()=>openDetail(card.id));
 
-  let mediaHTML='';
-  if(isImageUrl){
-    mediaHTML=`<div class="card-media-wrap" style="width:100%;height:72px;border-radius:6px;margin-bottom:8px;overflow:hidden;background:var(--bg4)"></div>`;
-  } else if(isVideoUrl){
-    mediaHTML=`<div class="card-media-wrap" style="width:100%;height:72px;border-radius:6px;margin-bottom:8px;overflow:hidden;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px">▶</div>`;
-  } else if(isDriveLink){
-    mediaHTML=`<div class="card-media-wrap" style="width:100%;padding:8px 10px;border-radius:6px;margin-bottom:8px;background:var(--bg4);display:flex;align-items:center;gap:6px;font-size:11px;color:var(--blue)">📁 Link do Drive</div>`;
+  if(prazoVencido){
+    const w=document.createElement('div');
+    w.style.cssText='font-size:10px;font-weight:600;color:var(--red);background:var(--red-dim);padding:3px 8px;border-radius:4px;margin-bottom:6px';
+    w.textContent='⚠️ Prazo vencido';
+    div.appendChild(w);
+  } else if(pubVencida){
+    const w=document.createElement('div');
+    w.style.cssText='font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);padding:3px 8px;border-radius:4px;margin-bottom:6px';
+    w.textContent='⏰ Publicação atrasada';
+    div.appendChild(w);
   }
 
-  div.innerHTML=`
-    ${prazoVencido?`<div style="font-size:10px;font-weight:600;color:var(--red);background:var(--red-dim);padding:3px 8px;border-radius:4px;margin-bottom:6px">⚠️ Prazo vencido</div>`:''}
-    ${pubVencida&&!prazoVencido?`<div style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);padding:3px 8px;border-radius:4px;margin-bottom:6px">⏰ Publicação atrasada</div>`:''}
-    ${mediaHTML}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div class="kcard-type" style="margin-bottom:0"><div class="type-dot" style="background:${c}"></div><span style="color:${c}">${card.tipo}</span></div>
-      <div style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;${statusStyle}">${card.status}</div>
-    </div>
-    ${tag?`<div class="tag-badge" style="background:${tag.bg};color:${tag.color}">${tag.label}</div>`:''}
-    <div class="kcard-copy"></div>
-    ${isCorrecao&&card.observacao?`<div class="kcard-obs" style="margin-top:8px;padding:7px 9px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(255,181,71,0.2);font-size:11px;color:var(--amber);line-height:1.4"></div>`:''}
-    <div class="kcard-footer"><div class="kcard-date">${card.data_publicacao?formatDate(card.data_publicacao):'—'}</div>${card.responsavel_producao?`<div class="kcard-resp" style="background:var(--accent-dim);color:var(--accent)"></div>`:card.responsavel?`<div class="kcard-resp"></div>`:''}</div>
-  `;
-
-  // Safely set text content (no HTML injection risk) and image src
-  const mediaWrap=div.querySelector('.card-media-wrap');
-  if(mediaWrap&&isImageUrl){
+  if(isImageUrl){
+    const wrap=document.createElement('div');
+    wrap.style.cssText='width:100%;height:72px;border-radius:6px;margin-bottom:8px;overflow:hidden;background:var(--bg4)';
     const img=document.createElement('img');
     img.src=card.midia_url;
     img.style.cssText='width:100%;height:100%;object-fit:cover';
-    img.onerror=()=>mediaWrap.remove();
-    mediaWrap.appendChild(img);
+    img.onerror=()=>wrap.remove();
+    wrap.appendChild(img);
+    div.appendChild(wrap);
+  } else if(isVideoUrl){
+    const wrap=document.createElement('div');
+    wrap.style.cssText='width:100%;height:72px;border-radius:6px;margin-bottom:8px;overflow:hidden;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px';
+    wrap.textContent='▶';
+    div.appendChild(wrap);
+  } else if(isDriveLink){
+    const wrap=document.createElement('div');
+    wrap.style.cssText='width:100%;padding:8px 10px;border-radius:6px;margin-bottom:8px;background:var(--bg4);display:flex;align-items:center;gap:6px;font-size:11px;color:var(--blue)';
+    wrap.textContent='📁 Link do Drive';
+    div.appendChild(wrap);
   }
-  const copyEl=div.querySelector('.kcard-copy');
-  if(copyEl){
-    if(card.copy)copyEl.textContent=card.copy;
-    else copyEl.innerHTML='<span style="color:var(--text3);font-style:italic">sem copy</span>';
-  }
-  const obsEl=div.querySelector('.kcard-obs');
-  if(obsEl)obsEl.textContent='✎ '+(card.observacao||'');
-  const respEls=div.querySelectorAll('.kcard-resp');
-  respEls.forEach(el=>{el.textContent=card.responsavel_producao||card.responsavel||'';});
 
-  return div.outerHTML;
+  const headerRow=document.createElement('div');
+  headerRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
+  const typeRow=document.createElement('div');
+  typeRow.className='kcard-type';
+  typeRow.style.marginBottom='0';
+  const dot=document.createElement('div');
+  dot.className='type-dot';
+  dot.style.background=c;
+  const typeSpan=document.createElement('span');
+  typeSpan.style.color=c;
+  typeSpan.textContent=card.tipo;
+  typeRow.appendChild(dot);typeRow.appendChild(typeSpan);
+  const statusBadge=document.createElement('div');
+  statusBadge.style.cssText='font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;'+statusStyle;
+  statusBadge.textContent=card.status;
+  headerRow.appendChild(typeRow);headerRow.appendChild(statusBadge);
+  div.appendChild(headerRow);
+
+  if(tag){
+    const tagEl=document.createElement('div');
+    tagEl.className='tag-badge';
+    tagEl.style.background=tag.bg;
+    tagEl.style.color=tag.color;
+    tagEl.textContent=tag.label;
+    div.appendChild(tagEl);
+  }
+
+  const copyEl=document.createElement('div');
+  copyEl.className='kcard-copy';
+  if(card.copy){
+    copyEl.textContent=card.copy;
+  } else {
+    const em=document.createElement('span');
+    em.style.cssText='color:var(--text3);font-style:italic';
+    em.textContent='sem copy';
+    copyEl.appendChild(em);
+  }
+  div.appendChild(copyEl);
+
+  if(isCorrecao&&card.observacao){
+    const obsEl=document.createElement('div');
+    obsEl.style.cssText='margin-top:8px;padding:7px 9px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(255,181,71,0.2);font-size:11px;color:var(--amber);line-height:1.4';
+    obsEl.textContent='✎ '+card.observacao;
+    div.appendChild(obsEl);
+  }
+
+  const footer=document.createElement('div');
+  footer.className='kcard-footer';
+  const dateEl=document.createElement('div');
+  dateEl.className='kcard-date';
+  dateEl.textContent=card.data_publicacao?formatDate(card.data_publicacao):'—';
+  footer.appendChild(dateEl);
+  const respText=card.responsavel_producao||card.responsavel;
+  if(respText){
+    const respEl=document.createElement('div');
+    respEl.className='kcard-resp';
+    if(card.responsavel_producao){
+      respEl.style.background='var(--accent-dim)';
+      respEl.style.color='var(--accent)';
+    }
+    respEl.textContent=respText;
+    footer.appendChild(respEl);
+  }
+  div.appendChild(footer);
+
+  return div;
 }
 
-function openDetail(id){
-  const card=conteudos.find(x=>x.id===id);if(!card)return;
+async function openDetail(id){
+  let card=conteudos.find(x=>x.id===id);
+  // Safety net: if not found in memory or seems stale, fetch fresh from DB
+  try{
+    const fresh=await getAll('conteudos',`?id=eq.${id}`);
+    if(fresh.length)card=fresh[0];
+  }catch(e){console.error('Erro ao buscar card atualizado',e);}
+  if(!card)return;
   cardEdit=card;statusSel=card.status;
   document.getElementById('detail-title').textContent=`${card.tipo} · ${card.status}`;
   document.getElementById('detail-meta').textContent=`${card.data_publicacao?formatDate(card.data_publicacao):'sem data'} · ${card.responsavel||'sem responsável'}`;
@@ -1268,27 +1356,29 @@ function openDetail(id){
     <div class="form-group"><label class="form-label">Responsável pela produção</label><input class="form-input" id="e-resp-prod" placeholder="ex: João (vídeo), Maria (arte)..." list="colaboradores-list"/></div>
     <div class="form-group"><label class="form-label">Observação</label><textarea class="form-textarea" id="e-obs" style="min-height:80px" placeholder="Briefing: ...&#10;Observação: ..."></textarea></div>`;
   uploadedUrls.edit=card.midias_urls&&card.midias_urls.length?[...card.midias_urls]:(card.midia_url?[card.midia_url]:[]);
-  setTimeout(()=>{
-    renderPreview('preview-edit',uploadedUrls.edit);
-    // Safely set all text fields
-    const respEl=document.getElementById('e-resp');
-    if(respEl)respEl.value=card.responsavel||'';
-    const respProdEl=document.getElementById('e-resp-prod');
-    if(respProdEl)respProdEl.value=card.responsavel_producao||'';
-    const midiaEl=document.getElementById('e-midia');
-    if(midiaEl)midiaEl.value=card.midia_url||'';
-    const refEl=document.getElementById('e-ref');
-    if(refEl)refEl.value=card.link_referencia||'';
-    if(refEl&&card.link_referencia)previewRef(card.link_referencia);
-    const copyEl=document.getElementById('e-copy');
-    if(copyEl)copyEl.value=card.copy||'';
-    const obsEl=document.getElementById('e-obs');
-    if(obsEl)obsEl.value=card.observacao||'';
-    // Pre-highlight current status
-    document.querySelectorAll('.status-btn').forEach(b=>b.style='');
-    const activeBtn=document.getElementById('sb-'+slugify(card.status));
-    if(activeBtn)activeBtn.style=getSS(card.status);
-  },50);
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      renderPreview('preview-edit',uploadedUrls.edit);
+      // Safely set all text fields
+      const respEl=document.getElementById('e-resp');
+      if(respEl)respEl.value=card.responsavel||'';
+      const respProdEl=document.getElementById('e-resp-prod');
+      if(respProdEl)respProdEl.value=card.responsavel_producao||'';
+      const midiaEl=document.getElementById('e-midia');
+      if(midiaEl)midiaEl.value=card.midia_url||'';
+      const refEl=document.getElementById('e-ref');
+      if(refEl)refEl.value=card.link_referencia||'';
+      if(refEl&&card.link_referencia)previewRef(card.link_referencia);
+      const copyEl=document.getElementById('e-copy');
+      if(copyEl)copyEl.value=card.copy||'';
+      const obsEl=document.getElementById('e-obs');
+      if(obsEl)obsEl.value=card.observacao||'';
+      // Pre-highlight current status
+      document.querySelectorAll('.status-btn').forEach(b=>b.style='');
+      const activeBtn=document.getElementById('sb-'+slugify(card.status));
+      if(activeBtn)activeBtn.style=getSS(card.status);
+    });
+  });
   document.getElementById('modal-card-detail').classList.add('open');
 }
 
