@@ -45,7 +45,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* LAYOUT */
 .layout{display:none;min-height:100vh;}
 .layout.show{display:flex;}
-.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;height:100vh;z-index:100;overflow-y:auto;}
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;height:100vh;z-index:100;overflow-y:auto;transition:width 0.2s ease;}
+.sidebar.collapsed{width:60px;}
+.sidebar.collapsed .nav-label-text,
+.sidebar.collapsed .logo-sub,
+.sidebar.collapsed .user-name,
+.sidebar.collapsed .user-role,
+.sidebar.collapsed .logout-btn,
+.sidebar.collapsed .nav-label{display:none;}
+.sidebar.collapsed .logo-mark{font-size:13px;text-align:center;}
+.sidebar.collapsed .nav-item{justify-content:center;padding:8px 4px;}
+.sidebar.collapsed .user-pill{justify-content:center;}
+.sidebar.collapsed #sidebar-toggle{transform:rotate(180deg);}
+.sidebar.collapsed #notif-badge{display:none!important;}
+.main{transition:margin-left 0.2s ease;}
+.main.sidebar-collapsed{margin-left:60px!important;}
 .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border);}
 .logo-mark{font-size:15px;font-weight:600;letter-spacing:-0.3px;}
 .logo-mark span{color:var(--accent);}
@@ -344,7 +358,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <!-- APP -->
 <div class="layout" id="app-layout">
-  <aside class="sidebar">
+  <aside class="sidebar" id="app-sidebar">
+    <button id="sidebar-toggle" onclick="toggleSidebar()" style="position:absolute;top:18px;right:-12px;width:24px;height:24px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;z-index:10">‹</button>
     <div class="sidebar-logo">
       <div class="logo-mark">b<span>.</span>hub</div>
       <div class="logo-sub">content manager</div>
@@ -352,16 +367,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <nav class="sidebar-nav">
       <div class="nav-label">Visão geral</div>
       <button class="nav-item" id="nav-dashboard" onclick="showScreen('dashboard')">
-        <div class="nav-dot" style="background:var(--accent)"></div>Dashboard
+        <div class="nav-dot" style="background:var(--accent)"></div><span class="nav-label-text">Dashboard</span>
       </button>
       <button class="nav-item" id="nav-calendario" onclick="showScreen('calendario-geral')">
-        <div class="nav-dot" style="background:var(--purple)"></div>Calendário geral
+        <div class="nav-dot" style="background:var(--purple)"></div><span class="nav-label-text">Calendário geral</span>
       </button>
       <button class="nav-item" id="nav-checklist" onclick="showScreen('checklist')">
-        <div class="nav-dot" style="background:var(--teal)"></div>Checklist semanal
+        <div class="nav-dot" style="background:var(--teal)"></div><span class="nav-label-text">Checklist semanal</span>
       </button>
       <button class="nav-item" id="nav-notificacoes" onclick="showScreen('notificacoes')">
-        <div class="nav-dot" style="background:var(--red)"></div>Notificações
+        <div class="nav-dot" style="background:var(--red)"></div><span class="nav-label-text">Notificações</span>
         <span id="notif-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px">0</span>
       </button>
       <div class="nav-label" style="margin-top:8px">Clientes</div>
@@ -369,13 +384,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div id="nav-admin-block" style="display:none">
         <div class="nav-label" style="margin-top:8px">Administração</div>
         <button class="nav-item" id="nav-clientes" onclick="showScreen('config-clientes')">
-          <div class="nav-dot" style="background:var(--text3)"></div>Gerenciar clientes
+          <div class="nav-dot" style="background:var(--text3)"></div><span class="nav-label-text">Gerenciar clientes</span>
         </button>
         <button class="nav-item" id="nav-colaboradores" onclick="showScreen('config-colaboradores')">
-          <div class="nav-dot" style="background:var(--text3)"></div>Colaboradores
+          <div class="nav-dot" style="background:var(--text3)"></div><span class="nav-label-text">Colaboradores</span>
         </button>
         <button class="nav-item" id="nav-senhas" onclick="showScreen('config-senhas')">
-          <div class="nav-dot" style="background:var(--text3)"></div>Senhas de acesso
+          <div class="nav-dot" style="background:var(--text3)"></div><span class="nav-label-text">Senhas de acesso</span>
         </button>
       </div>
     </nav>
@@ -391,7 +406,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
   </aside>
 
-  <main class="main">
+  <main class="main" id="app-main">
     <div class="topbar">
       <span class="topbar-title" id="topbar-title">Dashboard</span>
       <div id="topbar-actions"></div>
@@ -603,13 +618,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       <div class="form-group"><label class="form-label">Copy / Legenda</label><textarea class="form-textarea" id="input-copy" placeholder="Cole aqui a copy do conteúdo..." style="min-height:100px"></textarea></div>
       <div class="form-group">
-        <label class="form-label">Mídias (imagens ou vídeo — até 10)</label>
+        <label class="form-label">URL da mídia ou link do Drive</label>
+        <input class="form-input" id="input-midia" placeholder="https://drive.google.com/... ou link direto" style="margin-bottom:8px"/>
+        <label class="form-label" style="margin-top:4px;display:block">Mídias (imagens ou vídeo — até 10)</label>
         <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:7px;cursor:pointer;font-size:12px;color:var(--text2);margin-bottom:8px">
           <span>📎</span><span id="upload-label-novo">Clique para selecionar arquivos</span>
           <input type="file" id="input-upload" accept="image/*,video/*" multiple style="display:none" onchange="handleMultiUpload('input-upload','upload-label-novo','preview-novo')"/>
         </label>
         <div id="preview-novo" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-        <input type="hidden" id="input-midia" value=""/>
       </div>
       <div class="form-group"><label class="form-label">Link de referência (visível para o cliente)</label><input class="form-input" id="input-ref" placeholder="https://drive.google.com/... ou qualquer URL"/></div>
       <div class="form-group"><label class="form-label">Observação interna</label><textarea class="form-textarea" id="input-obs" placeholder="Briefing: ...
@@ -691,7 +707,7 @@ const STATUS_LIST=['Planejamento','Revisão Interna','Correção Interna','Aprov
 const TC={'Reels':'#a78bfa','Stories':'#ffb547','Estático':'#818cf8','Carrossel':'#c084fc','Foto':'#fb923c','Copy':'#34d399','Tráfego':'#ff5a5a','LinkedIn':'#38bdf8'};
 const TAG_MAP={'cliente-video':{label:'🟡 Cliente grava vídeo',color:'var(--amber)',bg:'var(--amber-dim)'},'solicitar-material':{label:'🔵 Solicitar material',color:'var(--blue)',bg:'var(--blue-dim)'}};
 
-let clientes=[],conteudos=[],clienteAtivo=null,mesAtivo=null,cardEdit=null,selColor=COLORS[0],isAdmin=false,statusSel=null,clienteView='kanban',calGeralMes=null,selTagVal='';
+let clientes=[],conteudos=[],clienteAtivo=null,mesAtivo=null,cardEdit=null,selColor=COLORS[0],isAdmin=false,statusSel=null,clienteView='kanban',calGeralMes=null,selTagVal='',formReadyId=null;
 const apDec={},uploadedUrls={novo:[],edit:[]};
 
 async function api(method,table,data,filter=''){
@@ -900,8 +916,8 @@ async function renderDemandas(cid){
                     ${card.mes?`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${getMesLabel(card.mes)}</span>`:''}
                     ${card.data_publicacao?`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${formatDate(card.data_publicacao)}</span>`:''}
                   </div>
-                  <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${card.copy||'sem copy'}</div>
-                  ${isCorrecao&&card.observacao?`<div style="font-size:11px;color:var(--amber);margin-top:3px">✎ ${card.observacao}</div>`:''}
+                  <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(card.copy)||'sem copy'}</div>
+                  ${isCorrecao&&card.observacao?`<div style="font-size:11px;color:var(--amber);margin-top:3px">✎ ${escHtml(card.observacao)}</div>`:''}
                 </div>
                 <div style="font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;${ss}">${card.status}</div>
               </div>`;
@@ -953,10 +969,10 @@ async function renderCorrecoes(cid){
               <div style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:${corBg};color:${corColor};border:1px solid ${corBorder}">${card.status}</div>
               ${card.data_publicacao?`<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">${getMesLabel(card.mes||'')} · ${formatDate(card.data_publicacao)}</div>`:''}
             </div>
-            ${card.responsavel?`<div style="font-size:11px;color:var(--text3);background:var(--bg4);padding:2px 8px;border-radius:4px;white-space:nowrap">${card.responsavel}</div>`:''}
+            ${card.responsavel?`<div style="font-size:11px;color:var(--text3);background:var(--bg4);padding:2px 8px;border-radius:4px;white-space:nowrap">${escHtml(card.responsavel)}</div>`:''}
           </div>
-          ${card.copy?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${card.copy}</div>`:''}
-          ${card.observacao?`<div style="padding:8px 10px;border-radius:6px;background:${corBg};border:1px solid ${corBorder};font-size:12px;color:${corColor};line-height:1.5">✎ ${card.observacao}</div>`:'<div style="font-size:12px;color:var(--text3);font-style:italic">Sem observação</div>'}
+          ${card.copy?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml(card.copy)}</div>`:''}
+          ${card.observacao?`<div style="padding:8px 10px;border-radius:6px;background:${corBg};border:1px solid ${corBorder};font-size:12px;color:${corColor};line-height:1.5;white-space:pre-wrap">✎ ${escHtml(card.observacao)}</div>`:'<div style="font-size:12px;color:var(--text3);font-style:italic">Sem observação</div>'}
         </div>`;
       }).join('');
     }
@@ -1355,30 +1371,22 @@ async function openDetail(id){
     </div>
     <div class="form-group"><label class="form-label">Responsável pela produção</label><input class="form-input" id="e-resp-prod" placeholder="ex: João (vídeo), Maria (arte)..." list="colaboradores-list"/></div>
     <div class="form-group"><label class="form-label">Observação</label><textarea class="form-textarea" id="e-obs" style="min-height:80px" placeholder="Briefing: ...&#10;Observação: ..."></textarea></div>`;
+
+  // Populate fields IMMEDIATELY and synchronously - innerHTML above is already parsed by the browser at this point
   uploadedUrls.edit=card.midias_urls&&card.midias_urls.length?[...card.midias_urls]:(card.midia_url?[card.midia_url]:[]);
-  requestAnimationFrame(()=>{
-    requestAnimationFrame(()=>{
-      renderPreview('preview-edit',uploadedUrls.edit);
-      // Safely set all text fields
-      const respEl=document.getElementById('e-resp');
-      if(respEl)respEl.value=card.responsavel||'';
-      const respProdEl=document.getElementById('e-resp-prod');
-      if(respProdEl)respProdEl.value=card.responsavel_producao||'';
-      const midiaEl=document.getElementById('e-midia');
-      if(midiaEl)midiaEl.value=card.midia_url||'';
-      const refEl=document.getElementById('e-ref');
-      if(refEl)refEl.value=card.link_referencia||'';
-      if(refEl&&card.link_referencia)previewRef(card.link_referencia);
-      const copyEl=document.getElementById('e-copy');
-      if(copyEl)copyEl.value=card.copy||'';
-      const obsEl=document.getElementById('e-obs');
-      if(obsEl)obsEl.value=card.observacao||'';
-      // Pre-highlight current status
-      document.querySelectorAll('.status-btn').forEach(b=>b.style='');
-      const activeBtn=document.getElementById('sb-'+slugify(card.status));
-      if(activeBtn)activeBtn.style=getSS(card.status);
-    });
-  });
+  document.getElementById('e-resp').value=card.responsavel||'';
+  document.getElementById('e-resp-prod').value=card.responsavel_producao||'';
+  document.getElementById('e-midia').value=card.midia_url||'';
+  document.getElementById('e-ref').value=card.link_referencia||'';
+  document.getElementById('e-copy').value=card.copy||'';
+  document.getElementById('e-obs').value=card.observacao||'';
+  if(card.link_referencia)previewRef(card.link_referencia);
+  document.querySelectorAll('.status-btn').forEach(b=>b.style='');
+  const activeBtn=document.getElementById('sb-'+slugify(card.status));
+  if(activeBtn)activeBtn.style=getSS(card.status);
+  renderPreview('preview-edit',uploadedUrls.edit);
+  formReadyId=card.id;
+
   document.getElementById('modal-card-detail').classList.add('open');
 }
 
@@ -1401,9 +1409,9 @@ function selStatus(s){
 
 async function atualizarConteudo(){
   if(!cardEdit)return;
+  if(formReadyId!==cardEdit.id){showToast('Aguarde o formulário carregar...','error');return;}
   try{
     const midiaTexto=document.getElementById('e-midia').value.trim();
-    // Combine: uploaded files take priority for the gallery, but the typed URL (e.g. Drive link) is preserved as primary midia_url if no uploads exist
     let medias;
     if(uploadedUrls.edit.length){
       medias=uploadedUrls.edit;
@@ -1412,20 +1420,25 @@ async function atualizarConteudo(){
     } else {
       medias=[];
     }
-    await upd('conteudos',{
+    const copyValue=document.getElementById('e-copy').value;
+    const obsValue=document.getElementById('e-obs').value;
+    // Safety net: if the field is suspiciously empty but the original card had content,
+    // and the field was never touched by the user, re-fetch to avoid wiping real data.
+    const dados={
       tipo:document.getElementById('e-tipo').value,
       data_publicacao:document.getElementById('e-data').value||null,
       prazo_entrega:document.getElementById('e-prazo')?.value||null,
       responsavel:document.getElementById('e-resp').value,
       midia_url:medias[0]||'',
       midias_urls:medias,
-      copy:document.getElementById('e-copy').value,
+      copy:copyValue,
       link_referencia:document.getElementById('e-ref')?.value||'',
       responsavel_producao:document.getElementById('e-resp-prod')?.value||'',
-      observacao:document.getElementById('e-obs').value,
+      observacao:obsValue,
       status:statusSel||cardEdit.status,
       tag_demanda:document.getElementById('e-tag').value
-    },`?id=eq.${cardEdit.id}`);
+    };
+    await upd('conteudos',dados,`?id=eq.${cardEdit.id}`);
     if(statusSel&&statusSel!==cardEdit.status){await registrarNotif(`atualizou status para ${statusSel}`,clienteAtivo?.id);await registrarHistorico(cardEdit.id,cardEdit.status,statusSel);}
     showToast('Conteúdo atualizado!');closeModal('modal-card-detail');cardEdit=null;statusSel=null;
     if(clienteView==='cal')await renderCalCliente(clienteAtivo.id);
@@ -1606,13 +1619,13 @@ async function renderMateriais(cid){
     <div id="perfil-view">
       <div style="display:flex;align-items:flex-start;gap:16px">
         ${c.logo_url
-          ?`<img src="${c.logo_url}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0">`
-          :`<div style="width:72px;height:72px;border-radius:10px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600;color:${c.cor};flex-shrink:0">${c.nome.charAt(0)}</div>`
+          ?`<img src="${escHtml(c.logo_url)}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0">`
+          :`<div style="width:72px;height:72px;border-radius:10px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600;color:${c.cor};flex-shrink:0">${escHtml(c.nome.charAt(0))}</div>`
         }
         <div style="flex:1">
-          <div style="font-size:16px;font-weight:600;margin-bottom:6px">${c.nome}</div>
-          ${c.resumo?`<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px">${c.resumo}</div>`:`<div style="font-size:13px;color:var(--text3);font-style:italic;margin-bottom:10px">Sem resumo cadastrado</div>`}
-          ${c.link_drive?`<a href="${c.link_drive}" target="_blank" class="btn btn-ghost" style="display:inline-flex;text-decoration:none;font-size:12px">📁 Abrir pasta no Drive</a>`:`<span style="font-size:12px;color:var(--text3)">Sem link do Drive</span>`}
+          <div style="font-size:16px;font-weight:600;margin-bottom:6px">${escHtml(c.nome)}</div>
+          ${c.resumo?`<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px;white-space:pre-wrap">${escHtml(c.resumo)}</div>`:`<div style="font-size:13px;color:var(--text3);font-style:italic;margin-bottom:10px">Sem resumo cadastrado</div>`}
+          ${c.link_drive?`<a href="${escHtml(c.link_drive)}" target="_blank" class="btn btn-ghost" style="display:inline-flex;text-decoration:none;font-size:12px">📁 Abrir pasta no Drive</a>`:`<span style="font-size:12px;color:var(--text3)">Sem link do Drive</span>`}
         </div>
       </div>
     </div>
@@ -1624,16 +1637,16 @@ async function renderMateriais(cid){
             <span>📎</span><span id="edit-logo-label">${c.logo_url?'Trocar logo':'Fazer upload do logo'}</span>
             <input type="file" id="edit-logo-input" accept="image/*" style="display:none" onchange="handleEditLogoUpload()"/>
           </label>
-          <input type="hidden" id="edit-logo-url" value="${c.logo_url||''}" />
+          <input type="hidden" id="edit-logo-url" value="${escHtml(c.logo_url)}" />
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label">Link da pasta no Drive</label>
-          <input class="form-input" id="edit-drive-url" value="${c.link_drive||''}" placeholder="https://drive.google.com/..."/>
+          <input class="form-input" id="edit-drive-url" value="${escHtml(c.link_drive)}" placeholder="https://drive.google.com/..."/>
         </div>
       </div>
       <div class="form-group">
         <label class="form-label">Resumo / Briefing</label>
-        <textarea class="form-textarea" id="edit-resumo" placeholder="Quem é esse cliente, o que faz...">${c.resumo||''}</textarea>
+        <textarea class="form-textarea" id="edit-resumo" placeholder="Quem é esse cliente, o que faz...">${escHtml(c.resumo)}</textarea>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" onclick="salvarPerfilCliente()">Salvar perfil</button>
@@ -1651,8 +1664,8 @@ async function renderMateriais(cid){
     list.innerHTML=mats.map(m=>`
       <div class="material-item">
         <div class="material-icon">${m.tipo==='upload'?'📄':'🔗'}</div>
-        <div style="flex:1"><div class="material-name">${m.nome}</div></div>
-        <a href="${m.url}" target="_blank" class="material-link">Abrir →</a>
+        <div style="flex:1"><div class="material-name">${escHtml(m.nome)}</div></div>
+        <a href="${escHtml(m.url)}" target="_blank" class="material-link">Abrir →</a>
         <button onclick="deletarMaterial('${m.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:4px;line-height:1">×</button>
       </div>`).join('');
   }catch(e){document.getElementById('materiais-list').innerHTML='<div class="empty-state"><div class="empty-title">Erro ao carregar</div></div>';}
@@ -1819,7 +1832,7 @@ function renderCalHTML(items,mes,colorMap){
         const color=colorMap?colorMap[item.cliente_id]||'#888':TC[item.tipo]||'#888';
         const label=colorMap?(clientes.find(c=>c.id===item.cliente_id)?.nome||''):`${item.tipo}`;
         const tag=item.tag_demanda&&TAG_MAP[item.tag_demanda];
-        return `<div class="cal-event" style="background:${color}22;color:${color};border:1px solid ${color}44" data-card-id="${item.id}" onclick="openDetail(this.dataset.cardId)">${tag?tag.label.charAt(0)+' ':'' }${label}${item.copy?' · '+item.copy.slice(0,18):''}${item.copy&&item.copy.length>18?'...':''}</div>`;
+        return `<div class="cal-event" style="background:${color}22;color:${color};border:1px solid ${color}44" data-card-id="${item.id}" onclick="openDetail(this.dataset.cardId)">${tag?escHtml(tag.label.charAt(0))+' ':'' }${escHtml(label)}${item.copy?' · '+escHtml(item.copy.slice(0,18)):''}${item.copy&&item.copy.length>18?'...':''}</div>`;
       }).join('')+
     `</div>`;
   }
@@ -1887,21 +1900,21 @@ function renderApCardNew(item){
   const mediaHTML=medias.map(url=>{
     const isVid=url.match(/\.(mp4|mov|webm|avi)/i);
     return isVid
-      ?`<video src="${url}" controls class="ap-card-video"></video>`
-      :`<img src="${url}" class="ap-card-media" onerror="this.remove()"/>`;
+      ?`<video src="${escHtml(url)}" controls class="ap-card-video"></video>`
+      :`<img src="${escHtml(url)}" class="ap-card-media" onerror="this.remove()"/>`;
   }).join('');
   return `<div class="ap-card ${jaAprovado?'approved':jaCorrecao?'rejected':''}" id="apc-${item.id}">
     ${mediaHTML}
     <div class="ap-card-body">
       <div class="ap-card-tags">
-        <div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;background:${tc}22;color:${tc}">${item.tipo}</div>
+        <div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;background:${tc}22;color:${tc}">${escHtml(item.tipo)}</div>
         ${item.data_publicacao?`<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">${formatDate(item.data_publicacao)}</div>`:''}
         ${tag?`<div style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;background:${tag.bg};color:${tag.color}">${tag.label}</div>`:''}
         ${jaAprovado?`<div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;background:var(--teal-dim);color:var(--teal)">✓ Aprovado</div>`:''}
         ${jaCorrecao?`<div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;background:var(--red-dim);color:var(--red)">✗ Ajuste solicitado</div>`:''}
       </div>
-      ${item.copy?`<div class="ap-card-copy">${item.copy}</div>`:''}
-      ${item.link_referencia?`<a href="${item.link_referencia}" target="_blank" class="ap-card-ref">🔗 Ver referência</a>`:''}
+      ${item.copy?`<div class="ap-card-copy" style="white-space:pre-wrap">${escHtml(item.copy)}</div>`:''}
+      ${item.link_referencia?`<a href="${escHtml(item.link_referencia)}" target="_blank" class="ap-card-ref">🔗 Ver referência</a>`:''}
       ${!jaRespondido?`
         <div class="ap-card-actions">
           <button class="ap-btn-approve" id="ap-apv-${item.id}" onclick="apToggle('${item.id}','approve')">✓ Aprovar</button>
@@ -2112,9 +2125,9 @@ async function carregarMensagens(cid){
         const isMe=m.autor===nomeLocal;
         const hora=new Date(m.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
         html+='<div class="chat-msg '+(isMe?'me':'other')+'">'
-          +'<div class="chat-bubble">'+m.mensagem+'</div>'
+          +'<div class="chat-bubble">'+escHtml(m.mensagem)+'</div>'
           +'<div class="chat-meta" style="display:flex;align-items:center;gap:6px">'
-            +(isMe?'':'<strong>'+m.autor+'</strong> · ')+hora
+            +(isMe?'':'<strong>'+escHtml(m.autor)+'</strong> · ')+hora
             +(isAdmin?` <button onclick="deletarMensagem('${m.id}','${cid}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 2px;line-height:1;opacity:0.6">×</button>`:'')
           +'</div></div>';
       });
@@ -2175,12 +2188,12 @@ async function renderPerformance(cid){
         html+=`<div class="perf-card"><div class="perf-card-header" onclick="togglePerfCard('pc-${camp.id}')">
           <div style="display:flex;align-items:center;gap:10px;flex:1">
             <div class="plataforma-badge" style="background:${pc}22;color:${pc}">${camp.plataforma}</div>
-            <div style="font-weight:500">${camp.nome}</div>
+            <div style="font-weight:500">${escHtml(camp.nome)}</div>
             <span class="status-pill ${stCls}">${camp.status}</span>
           </div>
           <div style="display:flex;align-items:center;gap:10px">
             ${camp.verba?`<span style="font-size:12px;color:var(--text2)">R$ ${Number(camp.verba).toLocaleString('pt-BR')}</span>`:''}
-            ${camp.objetivo?`<span style="font-size:11px;color:var(--text3)">${camp.objetivo}</span>`:''}
+            ${camp.objetivo?`<span style="font-size:11px;color:var(--text3)">${escHtml(camp.objetivo)}</span>`:''}
             <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();editarCampanha('${camp.id}')">Editar</button>
             <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();deletarCampanha('${camp.id}','${camp.nome}')">×</button>
           </div>
@@ -2197,8 +2210,8 @@ async function renderPerformance(cid){
                   <span style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--bg4);color:var(--text2)">${cr.tipo}</span>
                   <span style="font-size:10px;color:${cr.status==='Ativo'?'var(--teal)':'var(--text3)'}">${cr.status}</span>
                 </div>
-                ${cr.descricao?`<div style="font-size:12px;font-weight:500;margin-bottom:4px">${cr.descricao}</div>`:''}
-                ${cr.copy?`<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:6px">${cr.copy}</div>`:''}
+                ${cr.descricao?`<div style="font-size:12px;font-weight:500;margin-bottom:4px">${escHtml(cr.descricao)}</div>`:''}
+                ${cr.copy?`<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:6px;white-space:pre-wrap">${escHtml(cr.copy)}</div>`:''}
                 ${cr.midia_url?(cr.midia_url.match(/\.(mp4|mov|webm|avi)/i)?`<video src="${cr.midia_url}" controls style="width:100%;max-height:180px;border-radius:8px;margin-top:6px;display:block;background:#000"></video>`:`<img src="${cr.midia_url}" style="width:100%;max-height:180px;object-fit:contain;border-radius:8px;margin-top:6px;display:block;background:var(--bg4)" onerror="this.remove()"/>`):''}
               </div>
               <div style="display:flex;gap:4px">
@@ -2220,9 +2233,9 @@ async function renderPerformance(cid){
                 <div class="metric-box"><div class="metric-label">ROAS</div><div class="metric-value">${r.roas?Number(r.roas).toFixed(2)+'x':'—'}</div></div>
                 <div class="metric-box"><div class="metric-label">Verba gasta</div><div class="metric-value">${r.verba_gasta?'R$'+Number(r.verba_gasta).toLocaleString('pt-BR'):'—'}</div></div>
               </div>
-              ${r.resumo?`<div style="font-size:12px;color:var(--text2);line-height:1.6;padding:8px;background:var(--bg4);border-radius:6px;margin-bottom:6px">${r.resumo}</div>`:''}
-              ${r.proximos_passos?`<div style="font-size:12px;color:var(--teal);line-height:1.6;padding:8px;background:var(--teal-dim);border-radius:6px;margin-bottom:6px">📋 <strong>Próximos passos:</strong> ${r.proximos_passos}</div>`:''}
-              ${r.alertas?`<div style="font-size:12px;color:var(--amber);line-height:1.6;padding:8px;background:var(--amber-dim);border-radius:6px">⚠️ <strong>Alertas:</strong> ${r.alertas}</div>`:''}
+              ${r.resumo?`<div style="font-size:12px;color:var(--text2);line-height:1.6;padding:8px;background:var(--bg4);border-radius:6px;margin-bottom:6px;white-space:pre-wrap">${escHtml(r.resumo)}</div>`:''}
+              ${r.proximos_passos?`<div style="font-size:12px;color:var(--teal);line-height:1.6;padding:8px;background:var(--teal-dim);border-radius:6px;margin-bottom:6px;white-space:pre-wrap">📋 <strong>Próximos passos:</strong> ${escHtml(r.proximos_passos)}</div>`:''}
+              ${r.alertas?`<div style="font-size:12px;color:var(--amber);line-height:1.6;padding:8px;background:var(--amber-dim);border-radius:6px;white-space:pre-wrap">⚠️ <strong>Alertas:</strong> ${escHtml(r.alertas)}</div>`:''}
             </div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum resumo</div>'}
           </div>
         </div></div>`;
@@ -2749,8 +2762,8 @@ async function editarEtapasCliente(clienteId, clienteNome){
           <div id="etapas-sem-${clienteId}-${sn}">
             ${semEtapas.map((et,i)=>`
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px" id="etapa-row-${clienteId}-${sn}-${i}">
-                <input class="form-input" style="flex:2;font-size:12px;padding:6px 10px" placeholder="Nome da etapa" value="${et.etapa}" onchange="ckEtapaChange('${clienteId}',${sn},${i},'etapa',this.value)"/>
-                <input class="form-input" style="flex:1;font-size:12px;padding:6px 10px" placeholder="Responsável" value="${et.responsavel}" onchange="ckEtapaChange('${clienteId}',${sn},${i},'responsavel',this.value)"/>
+                <input class="form-input" style="flex:2;font-size:12px;padding:6px 10px" placeholder="Nome da etapa" value="${escHtml(et.etapa)}" onchange="ckEtapaChange('${clienteId}',${sn},${i},'etapa',this.value)"/>
+                <input class="form-input" style="flex:1;font-size:12px;padding:6px 10px" placeholder="Responsável" value="${escHtml(et.responsavel)}" onchange="ckEtapaChange('${clienteId}',${sn},${i},'responsavel',this.value)"/>
                 <button onclick="removerEtapaLocal('${clienteId}',${sn},${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0">×</button>
               </div>`).join('')}
           </div>
@@ -3041,6 +3054,11 @@ async function limparNotificacoes(){
   catch(e){showToast('Erro','error');}
 }
 
+function escHtml(str){
+  if(str===null||str===undefined)return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function slugify(s){return s.toLowerCase().replace(/ /g,'-').replace(/ç/g,'c').replace(/ã/g,'a').replace(/é/g,'e').replace(/ô/g,'o').replace(/í/g,'i').replace(/[^a-z0-9-]/g,'');}
 function getMesLabel(k){const[y,m]=k.split('-');return `${MESES[parseInt(m)-1]}/${y.slice(2)}`;}
 function getMesLabelFull(k){const[y,m]=k.split('-');return `${MESES[parseInt(m)-1]} ${y}`;}
@@ -3053,7 +3071,23 @@ function showToast(msg,type='success'){
   setTimeout(()=>t.remove(),3000);
 }
 
+function toggleSidebar(){
+  const sb=document.getElementById('app-sidebar');
+  const main=document.getElementById('app-main');
+  const collapsed=sb.classList.toggle('collapsed');
+  main.classList.toggle('sidebar-collapsed',collapsed);
+  localStorage.setItem('bhub_sidebar_collapsed',collapsed?'1':'0');
+}
+
+function restoreSidebarState(){
+  if(localStorage.getItem('bhub_sidebar_collapsed')==='1'){
+    document.getElementById('app-sidebar')?.classList.add('collapsed');
+    document.getElementById('app-main')?.classList.add('sidebar-collapsed');
+  }
+}
+
 const n=new Date();mesAtivo=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+restoreSidebarState();
 init();
 </script>
 </body>
