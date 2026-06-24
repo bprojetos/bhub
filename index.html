@@ -801,9 +801,9 @@ async function loadClientes(){
 
 function renderSidebar(){
   document.getElementById('sidebar-clients').innerHTML=clientes.map(c=>{
-    const logo=c.logo_url?`<img src="${c.logo_url}" class="client-logo" onerror="this.style.display='none'"/>`:`<div class="client-logo-placeholder" style="background:${c.cor}22;color:${c.cor}">${c.nome.charAt(0)}</div>`;
+    const logo=c.logo_url?`<img src="${escHtml(c.logo_url)}" class="client-logo" onerror="this.style.display='none'"/>`:`<div class="client-logo-placeholder" style="background:${c.cor}22;color:${c.cor}">${c.nome.charAt(0)}</div>`;
     return `<button class="nav-item" data-cid="${c.id}" onclick="showScreen('cliente','${c.id}')">
-      ${logo}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.nome}</span>
+      ${logo}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.nome)}</span>
     </button>`;
   }).join('');
 }
@@ -1061,11 +1061,11 @@ async function renderClientsGrid(){
         const pct=total?Math.round((mlabs/total)*100):0;
         const cor=cc.filter(x=>['Correção Interna','Correção de Arte'].includes(x.status)).length;
         const agu=cc.filter(x=>x.status==='Aprovação de Planejamento').length;
-        const logoEl=c.logo_url?`<img src="${c.logo_url}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">`:`<div style="width:36px;height:36px;border-radius:8px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${c.cor};flex-shrink:0">${c.nome.charAt(0)}</div>`;
+        const logoEl=c.logo_url?`<img src="${escHtml(c.logo_url)}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">`:`<div style="width:36px;height:36px;border-radius:8px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${c.cor};flex-shrink:0">${c.nome.charAt(0)}</div>`;
         return `<div class="client-list-item" style="--client-color:${c.cor}" onclick="showScreen('cliente','${c.id}')">
           ${logoEl}
           <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:600">${c.nome}</div>
+            <div style="font-size:14px;font-weight:600">${escHtml(c.nome)}</div>
             <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
               <div style="width:120px;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;flex-shrink:0"><div style="height:100%;width:${pct}%;background:${c.cor};border-radius:2px"></div></div>
               <div style="font-size:11px;color:var(--text3)">${pct}% · ${total} conteúdo${total!==1?'s':''}</div>
@@ -1091,7 +1091,7 @@ async function renderClientsGrid(){
       const logoEl=c.logo_url?`<img src="${c.logo_url}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">`:`<div style="width:32px;height:32px;border-radius:6px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:${c.cor};flex-shrink:0">${c.nome.charAt(0)}</div>`;
       return `<div class="client-card" style="--client-color:${c.cor}" onclick="showScreen('cliente','${c.id}')">
         <div class="client-card-header">
-          <div style="display:flex;align-items:center;gap:8px">${logoEl}<div class="client-name">${c.nome}</div></div>
+          <div style="display:flex;align-items:center;gap:8px">${logoEl}<div class="client-name">${escHtml(c.nome)}</div></div>
           <div class="client-month-badge">${getMesLabel(mes)}</div>
         </div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
@@ -1586,20 +1586,21 @@ function renderConfigClientes(){
   if(!clientes.length){list.innerHTML='<div class="empty-state"><div class="empty-title">Nenhum cliente</div></div>';return;}
   list.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${clientes.map(c=>`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;display:flex;align-items:center;gap:12px">
-      ${c.logo_url?`<img src="${c.logo_url}" style="width:32px;height:32px;border-radius:6px;object-fit:cover">`:`<div style="width:32px;height:32px;border-radius:6px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:${c.cor}">${c.nome.charAt(0)}</div>`}
+      ${c.logo_url?`<img src="${escHtml(c.logo_url)}" style="width:32px;height:32px;border-radius:6px;object-fit:cover">`:`<div style="width:32px;height:32px;border-radius:6px;background:${c.cor}22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:${c.cor}">${c.nome.charAt(0)}</div>`}
       <div style="flex:1">
-        <div style="font-weight:500">${c.nome}</div>
-        ${c.resumo?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${c.resumo.slice(0,60)}${c.resumo.length>60?'...':''}` :''}
-        ${c.link_drive?`<a href="${c.link_drive}" target="_blank" style="font-size:11px;color:var(--blue);display:block;margin-top:2px">📁 Drive</a>`:''}
+        <div style="font-weight:500">${escHtml(c.nome)}</div>
+        ${c.resumo?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${escHtml(c.resumo.slice(0,60))}${c.resumo.length>60?'...':''}` :''}
+        ${c.link_drive?`<a href="${escHtml(c.link_drive)}" target="_blank" style="font-size:11px;color:var(--blue);display:block;margin-top:2px">📁 Drive</a>`:''}
       </div>
       <button class="btn btn-ghost" onclick="showScreen('cliente','${c.id}')">Ver</button>
-      <button class="btn btn-danger" onclick="deletarCliente('${c.id}','${c.nome}')">Excluir</button>
+      <button class="btn btn-danger" data-client-id="${c.id}" data-client-name="${escHtml(c.nome)}" onclick="deletarCliente(this.dataset.clientId,this.dataset.clientName)">Excluir</button>
     </div>`).join('')}</div>`;
 }
 
 async function deletarCliente(id,nome){
-  if(!confirm(`Excluir "${nome}"?`))return;
-  try{await del('clientes',`?id=eq.${id}`);showToast(`${nome} excluído`);await loadClientes();renderConfigClientes();}
+  const nomeDisplay=unescHtml(nome);
+  if(!confirm(`Excluir "${nomeDisplay}"?`))return;
+  try{await del('clientes',`?id=eq.${id}`);showToast(`${nomeDisplay} excluído`);await loadClientes();renderConfigClientes();}
   catch(e){showToast('Erro','error');}
 }
 
@@ -1768,7 +1769,7 @@ async function renderCalCliente(cid){
         <div id="docs-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
           ${docs.length?docs.map(d=>`<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px">
             <span style="font-size:14px">${d.tipo==='roteiro'?'🎬':d.tipo==='stories'?'📱':'📄'}</span>
-            <a href="${d.url}" target="_blank" style="font-size:12px;color:var(--text);text-decoration:none;font-weight:500">${d.nome}</a>
+            <a href="${escHtml(d.url)}" target="_blank" style="font-size:12px;color:var(--text);text-decoration:none;font-weight:500">${escHtml(d.nome)}</a>
             <button onclick="deletarDocMensal('${d.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:0 2px;line-height:1">×</button>
           </div>`).join(''):'<div style="font-size:12px;color:var(--text3);font-style:italic">Nenhum documento</div>'}
         </div>
@@ -1798,7 +1799,7 @@ async function renderCalendarioGeral(){
     const data=await getAll('conteudos',`?mes=eq.${calGeralMes}&order=data_publicacao.asc`);
     const colorMap={};clientes.forEach(c=>{colorMap[c.id]=c.cor;});
     const legend=clientes.filter(c=>data.some(x=>x.cliente_id===c.id));
-    const legendHTML=legend.length?`<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">${legend.map(c=>`<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)"><div style="width:8px;height:8px;border-radius:50%;background:${c.cor}"></div>${c.nome}</div>`).join('')}</div>`:'';
+    const legendHTML=legend.length?`<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">${legend.map(c=>`<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)"><div style="width:8px;height:8px;border-radius:50%;background:${c.cor}"></div>${escHtml(c.nome)}</div>`).join('')}</div>`:'';
     grid.innerHTML=legendHTML+renderCalHTML(data,calGeralMes,colorMap);
   }catch(e){grid.innerHTML='<div class="empty-state"><div class="empty-title">Erro</div></div>';}
 }
@@ -1862,16 +1863,16 @@ async function renderAprovacaoPage(token){
 
     const docsHTML=docs.length?`<div class="ap-docs">
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;align-self:center">Documentos</div>
-      ${docs.map(d=>`<a href="${d.url}" target="_blank" class="ap-doc-btn">
+      ${docs.map(d=>`<a href="${escHtml(d.url)}" target="_blank" class="ap-doc-btn">
         <div class="ap-doc-icon">${d.tipo==='roteiro'?'🎬':d.tipo==='stories'?'📱':'📄'}</div>
-        <div class="ap-doc-label">${d.nome}</div>
+        <div class="ap-doc-label">${escHtml(d.nome)}</div>
       </a>`).join('')}
     </div>`:'';
 
     page.innerHTML=`
       <div class="ap-hero">
-        ${cl.logo_url?`<img src="${cl.logo_url}" class="ap-logo-img">`:`<div class="ap-logo-placeholder" style="background:${cl.cor}22;color:${cl.cor}">${cl.nome.charAt(0)}</div>`}
-        <div class="ap-client-name">${cl.nome}</div>
+        ${cl.logo_url?`<img src="${escHtml(cl.logo_url)}" class="ap-logo-img">`:`<div class="ap-logo-placeholder" style="background:${cl.cor}22;color:${cl.cor}">${cl.nome.charAt(0)}</div>`}
+        <div class="ap-client-name">${escHtml(cl.nome)}</div>
         <div class="ap-subtitle">Planejamento de ${getMesLabelFull(aprov.mes)}</div>
         <div class="ap-progress-bar"><div class="ap-progress-fill" id="ap-prog-fill" style="width:${total?Math.round((jaRespondidos/total)*100):0}%"></div></div>
         <div class="ap-progress-label" id="ap-prog-label">${jaRespondidos} de ${total} respondidos</div>
@@ -2195,7 +2196,7 @@ async function renderPerformance(cid){
             ${camp.verba?`<span style="font-size:12px;color:var(--text2)">R$ ${Number(camp.verba).toLocaleString('pt-BR')}</span>`:''}
             ${camp.objetivo?`<span style="font-size:11px;color:var(--text3)">${escHtml(camp.objetivo)}</span>`:''}
             <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();editarCampanha('${camp.id}')">Editar</button>
-            <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();deletarCampanha('${camp.id}','${camp.nome}')">×</button>
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" data-camp-id="${camp.id}" data-camp-name="${escHtml(camp.nome)}" onclick="event.stopPropagation();deletarCampanha(this.dataset.campId,this.dataset.campName)">×</button>
           </div>
         </div>
         <div class="perf-card-body" id="pc-${camp.id}">
@@ -2212,7 +2213,7 @@ async function renderPerformance(cid){
                 </div>
                 ${cr.descricao?`<div style="font-size:12px;font-weight:500;margin-bottom:4px">${escHtml(cr.descricao)}</div>`:''}
                 ${cr.copy?`<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:6px;white-space:pre-wrap">${escHtml(cr.copy)}</div>`:''}
-                ${cr.midia_url?(cr.midia_url.match(/\.(mp4|mov|webm|avi)/i)?`<video src="${cr.midia_url}" controls style="width:100%;max-height:180px;border-radius:8px;margin-top:6px;display:block;background:#000"></video>`:`<img src="${cr.midia_url}" style="width:100%;max-height:180px;object-fit:contain;border-radius:8px;margin-top:6px;display:block;background:var(--bg4)" onerror="this.remove()"/>`):''}
+                ${cr.midia_url?(cr.midia_url.match(/\.(mp4|mov|webm|avi)/i)?`<video src="${escHtml(cr.midia_url)}" controls style="width:100%;max-height:180px;border-radius:8px;margin-top:6px;display:block;background:#000"></video>`:`<img src="${escHtml(cr.midia_url)}" style="width:100%;max-height:180px;object-fit:contain;border-radius:8px;margin-top:6px;display:block;background:var(--bg4)" onerror="this.remove()"/>`):''}
               </div>
               <div style="display:flex;gap:4px">
                 <button onclick="editarCriativo('${cr.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:11px;padding:3px 8px">Editar</button>
@@ -2282,7 +2283,7 @@ async function salvarCampanha(){
   }catch(e){showToast('Erro','error');}
 }
 
-async function deletarCampanha(id,nome){if(!confirm(`Excluir "${nome}"?`))return;try{await del('campanhas',`?id=eq.${id}`);showToast('Excluída');renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
+async function deletarCampanha(id,nome){const nomeDisplay=unescHtml(nome);if(!confirm(`Excluir "${nomeDisplay}"?`))return;try{await del('campanhas',`?id=eq.${id}`);showToast('Excluída');renderPerformance(clienteAtivo.id);}catch(e){showToast('Erro','error');}}
 
 let criatCampId=null;
 function openModalCriativo(campId){
@@ -2339,17 +2340,18 @@ async function exportarRelatorio(cid){
   try{
     const cliente=clientes.find(x=>x.id===cid);
     const campanhas=await getAll('campanhas',`?cliente_id=eq.${cid}&order=criado_em.desc`);
-    let html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório — ${cliente.nome}</title><style>body{font-family:Arial,sans-serif;max-width:900px;margin:0 auto;padding:40px 32px;color:#111;}h1{font-size:24px;}h2{font-size:16px;color:#444;margin:24px 0 8px;}h3{font-size:14px;margin:16px 0 6px;}.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;margin-right:6px;}.ativa{background:#d1fae5;color:#065f46;}.pausada{background:#fef3c7;color:#92400e;}.encerrada{background:#f3f4f6;color:#6b7280;}table{width:100%;border-collapse:collapse;margin:8px 0 16px;}th,td{padding:8px 10px;border:1px solid #e5e7eb;font-size:12px;text-align:left;}th{background:#f9fafb;font-weight:600;}.cbox{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:12px;line-height:1.6;margin-bottom:8px;}.rbox{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px;font-size:12px;line-height:1.6;margin-top:6px;}hr{border:none;border-top:1px solid #e5e7eb;margin:24px 0;}</style></head><body><h1>Relatório de Performance — ${cliente.nome}</h1><p style="font-size:12px;color:#6b7280">Gerado em ${new Date().toLocaleDateString('pt-BR')} · b.content</p><hr>`;
+    const nomeClienteSafe=escHtml(cliente.nome);
+    let html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório — ${nomeClienteSafe}</title><style>body{font-family:Arial,sans-serif;max-width:900px;margin:0 auto;padding:40px 32px;color:#111;}h1{font-size:24px;}h2{font-size:16px;color:#444;margin:24px 0 8px;}h3{font-size:14px;margin:16px 0 6px;}.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;margin-right:6px;}.ativa{background:#d1fae5;color:#065f46;}.pausada{background:#fef3c7;color:#92400e;}.encerrada{background:#f3f4f6;color:#6b7280;}table{width:100%;border-collapse:collapse;margin:8px 0 16px;}th,td{padding:8px 10px;border:1px solid #e5e7eb;font-size:12px;text-align:left;}th{background:#f9fafb;font-weight:600;}.cbox{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:12px;line-height:1.6;margin-bottom:8px;}.rbox{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px;font-size:12px;line-height:1.6;margin-top:6px;}hr{border:none;border-top:1px solid #e5e7eb;margin:24px 0;}</style></head><body><h1>Relatório de Performance — ${nomeClienteSafe}</h1><p style="font-size:12px;color:#6b7280">Gerado em ${new Date().toLocaleDateString('pt-BR')} · b.content</p><hr>`;
     for(const camp of campanhas){
       const crs=await getAll('criativos',`?campanha_id=eq.${camp.id}&order=criado_em.asc`);
       const res=await getAll('resumos_semanais',`?campanha_id=eq.${camp.id}&order=semana.asc`);
-      html+=`<h2>${camp.plataforma} — ${camp.nome}</h2><p><span class="badge ${camp.status.toLowerCase()}">${camp.status}</span>${camp.objetivo?` Objetivo: ${camp.objetivo}`:''}${camp.verba?` · Verba: R$ ${Number(camp.verba).toLocaleString('pt-BR')}`:''}</p>`;
-      if(crs.length){html+=`<h3>Criativos e Copys</h3>`;crs.forEach(cr=>{html+=`<div style="margin-bottom:10px"><strong>${cr.tipo}${cr.descricao?' — '+cr.descricao:''}</strong> (${cr.status})`;if(cr.copy)html+=`<div class="cbox">${cr.copy}</div>`;html+=`</div>`;});}
-      if(res.length){html+=`<h3>Resumos Semanais</h3><table><tr><th>Semana</th><th>Impressões</th><th>Cliques</th><th>Conversões</th><th>ROAS</th><th>Verba</th></tr>`;res.forEach(r=>{html+=`<tr><td>${r.semana}</td><td>${r.impressoes?Number(r.impressoes).toLocaleString('pt-BR'):'—'}</td><td>${r.cliques?Number(r.cliques).toLocaleString('pt-BR'):'—'}</td><td>${r.conversoes||'—'}</td><td>${r.roas?Number(r.roas).toFixed(2)+'x':'—'}</td><td>${r.verba_gasta?'R$ '+Number(r.verba_gasta).toLocaleString('pt-BR'):'—'}</td></tr>`;if(r.resumo)html+=`<tr><td colspan="6"><div class="rbox">${r.resumo}</div></td></tr>`;});html+=`</table>`;}
+      html+=`<h2>${escHtml(camp.plataforma)} — ${escHtml(camp.nome)}</h2><p><span class="badge ${camp.status.toLowerCase()}">${escHtml(camp.status)}</span>${camp.objetivo?` Objetivo: ${escHtml(camp.objetivo)}`:''}${camp.verba?` · Verba: R$ ${Number(camp.verba).toLocaleString('pt-BR')}`:''}</p>`;
+      if(crs.length){html+=`<h3>Criativos e Copys</h3>`;crs.forEach(cr=>{html+=`<div style="margin-bottom:10px"><strong>${escHtml(cr.tipo)}${cr.descricao?' — '+escHtml(cr.descricao):''}</strong> (${escHtml(cr.status)})`;if(cr.copy)html+=`<div class="cbox">${escHtml(cr.copy)}</div>`;html+=`</div>`;});}
+      if(res.length){html+=`<h3>Resumos Semanais</h3><table><tr><th>Semana</th><th>Impressões</th><th>Cliques</th><th>Conversões</th><th>ROAS</th><th>Verba</th></tr>`;res.forEach(r=>{html+=`<tr><td>${r.semana}</td><td>${r.impressoes?Number(r.impressoes).toLocaleString('pt-BR'):'—'}</td><td>${r.cliques?Number(r.cliques).toLocaleString('pt-BR'):'—'}</td><td>${r.conversoes||'—'}</td><td>${r.roas?Number(r.roas).toFixed(2)+'x':'—'}</td><td>${r.verba_gasta?'R$ '+Number(r.verba_gasta).toLocaleString('pt-BR'):'—'}</td></tr>`;if(r.resumo)html+=`<tr><td colspan="6"><div class="rbox">${escHtml(r.resumo)}</div></td></tr>`;});html+=`</table>`;}
       html+=`<hr>`;
     }
     html+=`</body></html>`;
-    const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`relatorio-${cliente.nome.toLowerCase().replace(/ /g,'-')}-${new Date().toISOString().slice(0,10)}.html`;a.click();URL.revokeObjectURL(url);showToast('Relatório gerado!');
+    const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`relatorio-${cliente.nome.toLowerCase().replace(/[^a-z0-9]/g,'-')}-${new Date().toISOString().slice(0,10)}.html`;a.click();URL.revokeObjectURL(url);showToast('Relatório gerado!');
   }catch(e){showToast('Erro','error');console.error(e);}
 }
 
@@ -2383,9 +2385,9 @@ async function renderConfigColabs(){
     ${colaboradoresList.map(col=>`
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;display:flex;align-items:center;gap:12px">
         <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-dim);color:var(--accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${col.nome.charAt(0).toUpperCase()}</div>
-        <div style="flex:1;font-weight:500">${col.nome}</div>
-        <button class="btn btn-ghost" onclick="editarColab('${col.id}','${col.nome}')">Editar</button>
-        <button class="btn btn-danger" onclick="deletarColab('${col.id}','${col.nome}')">Excluir</button>
+        <div style="flex:1;font-weight:500">${escHtml(col.nome)}</div>
+        <button class="btn btn-ghost" data-colab-id="${col.id}" data-colab-name="${escHtml(col.nome)}" onclick="editarColab(this.dataset.colabId,this.dataset.colabName)">Editar</button>
+        <button class="btn btn-danger" data-colab-id="${col.id}" data-colab-name="${escHtml(col.nome)}" onclick="deletarColab(this.dataset.colabId,this.dataset.colabName)">Excluir</button>
       </div>`).join('')}
   </div>`;
 }
@@ -2422,7 +2424,7 @@ function editarColab(id,nomeAtual){
   ov.innerHTML=`<div class="modal" style="max-width:400px">
     <div class="modal-header"><div class="modal-title">Editar colaborador</div><button class="modal-close" onclick="document.getElementById('modal-colab-edit-temp').remove()">×</button></div>
     <div class="modal-body">
-      <div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="colab-edit-input" value="${nomeAtual}"/></div>
+      <div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="colab-edit-input"/></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-colab-edit-temp').remove()">Cancelar</button>
@@ -2430,6 +2432,7 @@ function editarColab(id,nomeAtual){
     </div>
   </div>`;
   document.body.appendChild(ov);
+  document.getElementById('colab-edit-input').value=nomeAtual;
   setTimeout(()=>document.getElementById('colab-edit-input')?.focus(),100);
 }
 
@@ -2445,10 +2448,11 @@ async function salvarEditColab(id){
 }
 
 async function deletarColab(id,nome){
-  if(!confirm(`Excluir "${nome}"?`))return;
+  const nomeDisplay=unescHtml(nome);
+  if(!confirm(`Excluir "${nomeDisplay}"?`))return;
   try{
     await del('colaboradores',`?id=eq.${id}`);
-    showToast(`${nome} removido`);
+    showToast(`${nomeDisplay} removido`);
     renderConfigColabs();
   }catch(e){showToast('Erro','error');}
 }
@@ -2682,15 +2686,15 @@ async function renderChecklist(){
 
       html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden">
         <div style="padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;border-left:3px solid ${cl.cor}" onclick="toggleCkCliente('ck-${cl.id}')">
-          ${cl.logo_url?`<img src="${cl.logo_url}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;flex-shrink:0">`:`<div style="width:28px;height:28px;border-radius:6px;background:${cl.cor}22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${cl.cor};flex-shrink:0">${cl.nome.charAt(0)}</div>`}
+          ${cl.logo_url?`<img src="${escHtml(cl.logo_url)}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;flex-shrink:0">`:`<div style="width:28px;height:28px;border-radius:6px;background:${cl.cor}22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${cl.cor};flex-shrink:0">${cl.nome.charAt(0)}</div>`}
           <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:600;margin-bottom:4px">${cl.nome}</div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:4px">${escHtml(cl.nome)}</div>
             <div style="display:flex;align-items:center;gap:8px">
               <div style="flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${cl.cor};border-radius:2px"></div></div>
               <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${conclCl}/${totalCl} · ${pct}%</div>
             </div>
           </div>
-          <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();editarEtapasCliente('${cl.id}','${cl.nome}')">Editar etapas</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" data-client-id="${cl.id}" data-client-name="${escHtml(cl.nome)}" onclick="event.stopPropagation();editarEtapasCliente(this.dataset.clientId,this.dataset.clientName)">Editar etapas</button>
           <span style="color:var(--text3);font-size:12px" id="ck-arrow-${cl.id}">▼</span>
         </div>
         <div id="ck-${cl.id}" style="display:none;border-top:1px solid var(--border)">
@@ -2711,11 +2715,11 @@ async function renderChecklist(){
                   const mesRefLabel=mesRef==='atual'?'🟢 Mês atual':'🔵 Próximo mês';
                   return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px">
                     <div style="flex:1;min-width:0">
-                      <div style="font-size:12px;font-weight:500">${et.etapa}</div>
-                      <div style="font-size:10px;color:var(--text3);margin-top:1px">${et.responsavel}</div>
+                      <div style="font-size:12px;font-weight:500">${escHtml(et.etapa)}</div>
+                      <div style="font-size:10px;color:var(--text3);margin-top:1px">${escHtml(et.responsavel)}</div>
                     </div>
-                    <button onclick="toggleMesRef('${cl.id}','${sn}','${et.etapa.replace(/'/g,"\'")}','${et.responsavel}','${mesRef}',this)" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${mesRefStyle}">${mesRefLabel}</button>
-                    <select onchange="atualizarCkStatus('${cl.id}','${sn}','${et.etapa.replace(/'/g,"\'")}','${et.responsavel}',this.value)" style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${stStyle}">
+                    <button data-cl="${cl.id}" data-sn="${sn}" data-etapa="${escHtml(et.etapa)}" data-resp="${escHtml(et.responsavel)}" data-mesref="${mesRef}" onclick="toggleMesRef(this.dataset.cl,this.dataset.sn,unescHtml(this.dataset.etapa),unescHtml(this.dataset.resp),this.dataset.mesref,this)" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${mesRefStyle}">${mesRefLabel}</button>
+                    <select data-cl="${cl.id}" data-sn="${sn}" data-etapa="${escHtml(et.etapa)}" data-resp="${escHtml(et.responsavel)}" onchange="atualizarCkStatus(this.dataset.cl,this.dataset.sn,unescHtml(this.dataset.etapa),unescHtml(this.dataset.resp),this.value)" style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;${stStyle}">
                       ${STATUS_CK.map(s=>`<option value="${s}" ${s===status?'selected':''}>${s}</option>`).join('')}
                     </select>
                   </div>`;
@@ -2866,12 +2870,12 @@ function mostrarDetalhesCk(statusFiltro, statusData){
           return `<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">
             <div style="flex:1">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                ${cl?`<div style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:${cl.cor}22;color:${cl.cor}">${cl.nome}</div>`:''}
+                ${cl?`<div style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:${cl.cor}22;color:${cl.cor}">${escHtml(cl.nome)}</div>`:''}
                 <div style="font-size:11px;color:var(--text3)">${semInfo[row.semana]||''}</div>
                 <div style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;${st}">${row.status}</div>
               </div>
-              <div style="font-size:13px;font-weight:500">${row.etapa}</div>
-              <div style="font-size:11px;color:var(--text3);margin-top:2px">${row.responsavel}</div>
+              <div style="font-size:13px;font-weight:500">${escHtml(row.etapa)}</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px">${escHtml(row.responsavel)}</div>
             </div>
             <button onclick="deletarCkItem('${row.id}',this)" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text3);cursor:pointer;font-size:12px;padding:3px 8px;flex-shrink:0;transition:all 0.15s" onmouseover="this.style.color='var(--red)';this.style.borderColor='rgba(255,90,90,0.4)'" onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border)'">× Zerar</button>
           </div>`;
@@ -2955,7 +2959,7 @@ async function verHistorico(conteudoId){
   try{
     const hist=await getAll('historico_status',`?conteudo_id=eq.${conteudoId}&order=criado_em.asc`);
     const ov=document.createElement('div');ov.className='modal-overlay open';ov.id='modal-hist-temp';
-    ov.innerHTML=`<div class="modal" style="max-width:480px"><div class="modal-header"><div class="modal-title">Histórico de status</div><button class="modal-close" onclick="document.getElementById('modal-hist-temp').remove()">×</button></div><div class="modal-body">${!hist.length?'<div class="empty-state"><div class="empty-title">Sem histórico ainda</div></div>':hist.map(h=>{const tempo=new Date(h.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:12px;color:var(--text2)">${h.status_anterior||'—'} → <strong style="color:var(--text)">${h.status_novo}</strong></div><div style="font-size:10px;color:var(--text3);margin-top:2px">${h.autor} · ${tempo}</div></div></div>`;}).join('')}</div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-hist-temp').remove()">Fechar</button></div></div>`;
+    ov.innerHTML=`<div class="modal" style="max-width:480px"><div class="modal-header"><div class="modal-title">Histórico de status</div><button class="modal-close" onclick="document.getElementById('modal-hist-temp').remove()">×</button></div><div class="modal-body">${!hist.length?'<div class="empty-state"><div class="empty-title">Sem histórico ainda</div></div>':hist.map(h=>{const tempo=new Date(h.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:12px;color:var(--text2)">${escHtml(h.status_anterior)||'—'} → <strong style="color:var(--text)">${escHtml(h.status_novo)}</strong></div><div style="font-size:10px;color:var(--text3);margin-top:2px">${escHtml(h.autor)} · ${tempo}</div></div></div>`;}).join('')}</div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-hist-temp').remove()">Fechar</button></div></div>`;
     document.body.appendChild(ov);
   }catch(e){showToast('Erro','error');}
 }
@@ -2970,7 +2974,7 @@ async function abrirTemplates(){
     <div class="form-group"><label class="form-label">Nome do template</label><input class="form-input" id="tpl-nome" placeholder="ex: Kit mensal padrão"/></div>
     <div class="form-group"><label class="form-label">Itens — uma linha por conteúdo: Tipo,Responsável</label><textarea class="form-textarea" id="tpl-itens" placeholder="Reels,Thainá&#10;Stories,Thainá&#10;Carrossel,João&#10;Copy,Billie" style="min-height:120px;font-family:'DM Mono',monospace;font-size:12px"></textarea></div>
     <div style="margin-bottom:16px"><button class="btn btn-primary" onclick="salvarTemplate('${cid}')">Salvar template</button></div>
-    ${templates.length?`<div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Templates salvos</div>${templates.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><div style="flex:1"><div style="font-size:13px;font-weight:500">${t.nome}</div><div style="font-size:11px;color:var(--text3)">${t.itens.length} itens</div></div><button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="aplicarTemplate('${t.id}')">Aplicar</button><button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="deletarTemplate('${t.id}')">×</button></div>`).join('')}`:'<div style="font-size:12px;color:var(--text3);font-style:italic">Nenhum template salvo ainda</div>'}
+    ${templates.length?`<div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Templates salvos</div>${templates.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><div style="flex:1"><div style="font-size:13px;font-weight:500">${escHtml(t.nome)}</div><div style="font-size:11px;color:var(--text3)">${t.itens.length} itens</div></div><button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="aplicarTemplate('${t.id}')">Aplicar</button><button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="deletarTemplate('${t.id}')">×</button></div>`).join('')}`:'<div style="font-size:12px;color:var(--text3);font-style:italic">Nenhum template salvo ainda</div>'}
   </div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('modal-templates-temp').remove()">Fechar</button></div></div>`;
   document.body.appendChild(ov);
 }
@@ -3052,6 +3056,13 @@ async function limparNotificacoes(){
   if(!confirm('Limpar todas as notificações?'))return;
   try{await del('notificacoes','?id=neq.00000000-0000-0000-0000-000000000000');showToast('Notificações limpas');renderNotificacoes();}
   catch(e){showToast('Erro','error');}
+}
+
+function unescHtml(str){
+  if(!str)return '';
+  const ta=document.createElement('textarea');
+  ta.innerHTML=str;
+  return ta.value;
 }
 
 function escHtml(str){
