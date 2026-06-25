@@ -800,8 +800,9 @@ async function loadClientes(){
 }
 
 function renderSidebar(){
-  document.getElementById('sidebar-clients').innerHTML=clientes.map(c=>{
-    const logo=c.logo_url?`<img src="${escHtml(c.logo_url)}" class="client-logo" onerror="this.style.display='none'"/>`:`<div class="client-logo-placeholder" style="background:${c.cor}22;color:${c.cor}">${c.nome.charAt(0)}</div>`;
+  const sorted=[...clientes].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  document.getElementById('sidebar-clients').innerHTML=sorted.map(c=>{
+    const logo=c.logo_url?`<img src="${escHtml(c.logo_url)}" class="client-logo" onerror="this.style.display='none'"/>`:`<div class="client-logo-placeholder" style="background:${c.cor}22;color:${c.cor}">${escHtml(c.nome.charAt(0))}</div>`;
     return `<button class="nav-item" data-cid="${c.id}" onclick="showScreen('cliente','${c.id}')">
       ${logo}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.nome)}</span>
     </button>`;
@@ -1746,6 +1747,24 @@ async function deletarMaterial(id){
 }
 
 // CALENDÁRIO CLIENTE
+async function uploadDocMensal(input, cid, mes, tipo){
+  const file=input.files[0];if(!file)return;
+  showToast('Enviando documento...');
+  try{
+    const url=await uploadFile(file);
+    const nomeMap={'roteiro':'Roteiro Reels','stories':'Sugestão Stories','outro':file.name};
+    await ins('docs_mensais',{cliente_id:cid,mes,nome:nomeMap[tipo]||file.name,tipo,url});
+    showToast('Documento enviado!');
+    renderCalCliente(cid);
+  }catch(e){showToast('Erro no upload','error');console.error(e);}
+}
+
+async function deletarDocMensal(id){
+  if(!confirm('Remover este documento?'))return;
+  try{await del('docs_mensais',`?id=eq.${id}`);renderCalCliente(clienteAtivo.id);}
+  catch(e){showToast('Erro','error');}
+}
+
 async function renderCalCliente(cid){
   const view=document.getElementById('cliente-view');
   view.style.cssText='';
